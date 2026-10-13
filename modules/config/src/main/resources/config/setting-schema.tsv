@@ -1,0 +1,149 @@
+rawKey	type	default	scope
+module.enabled	BOOLEAN	true	USER
+feature.glass_bars.enabled	BOOLEAN	false	USER
+feature.glass_bars.main.enabled	BOOLEAN	false	USER
+feature.glass_bars.detail.enabled	BOOLEAN	false	USER
+feature.glass_bars.directory.enabled	BOOLEAN	false	USER
+feature.glass_bars.main.height_dp	STRING	64	USER
+feature.glass_bars.main.width_percent	STRING	80	USER
+feature.glass_bars.main.bottom_gap_dp	STRING	-1	USER
+feature.glass_bars.detail.height_dp	STRING	64	USER
+feature.glass_bars.detail.width_percent	STRING	59	USER
+feature.glass_bars.detail.bottom_gap_dp	STRING	-1	USER
+feature.glass_bars.directory.height_dp	STRING	64	USER
+feature.glass_bars.directory.width_percent	STRING	59	USER
+feature.glass_bars.directory.bottom_gap_dp	STRING	-1	USER
+feature.glass_bars.blur	BOOLEAN	true	USER
+feature.glass_bars.refraction	BOOLEAN	true	USER
+feature.glass_bars.dispersion	BOOLEAN	false	USER
+feature.glass_bars.highlight	BOOLEAN	true	USER
+feature.glass_bars.selection	BOOLEAN	true	USER
+feature.glass_bars.shadow	BOOLEAN	true	USER
+feature.glass_bars.tilt	BOOLEAN	true	USER
+feature.glass_bars.animation	BOOLEAN	true	USER
+feature.glass_bars.strength	STRING	standard	USER
+feature.reader_watermark.disable	BOOLEAN	false	USER
+feature.upload_watermark.disable	BOOLEAN	false	USER
+feature.startup.block_splash_ad	BOOLEAN	false	USER
+feature.startup.skip_splash_image	BOOLEAN	false	USER
+feature.startup.local_splash_image.enabled	BOOLEAN	false	USER
+feature.startup.local_splash_image.path	STRING		USER
+feature.startup.custom_splash_image.enabled	BOOLEAN	false	USER
+feature.startup.custom_splash_image.url	STRING		USER
+feature.startup.custom_splash_image.dark_logo	BOOLEAN	false	USER
+feature.startup.official_splash_image.enabled	BOOLEAN	false	USER
+feature.startup.official_splash_image.url	STRING		USER
+feature.startup.official_splash_image.paper_id	STRING		USER
+feature.startup.official_splash_image.local_unlock	BOOLEAN	false	USER
+feature.startup.official_splash_image.local.url	STRING		USER
+feature.startup.official_splash_image.local.paper_id	LONG	0	USER
+feature.startup.official_splash_image.local.dark_logo	BOOLEAN	false	USER
+feature.report_block.disable_startup_report	BOOLEAN	false	USER
+feature.report_block.disable_track_device_info	BOOLEAN	false	USER
+feature.report_block.disable_fock_report	BOOLEAN	false	USER
+feature.startup.disable_download_game	BOOLEAN	false	USER
+feature.dialog.suppress_privacy_version	BOOLEAN	false	USER
+feature.dialog.suppress_update_check	BOOLEAN	false	USER
+feature.dialog.suppress_notification_permission	BOOLEAN	false	USER
+feature.dialog.suppress_teenager_enter_dialog	BOOLEAN	false	USER
+feature.read_page.clean_chapter_end	BOOLEAN	false	USER
+feature.read_page.clean_last_page	BOOLEAN	false	USER
+feature.read_page.hide_toolbar_ad	BOOLEAN	false	USER
+feature.read_page.free_copy	BOOLEAN	false	USER
+feature.read_page.free_copy.mode	STRING	long_press	USER
+feature.read_page.body_copy	BOOLEAN	false	USER
+feature.read_page.paragraph_action.order	STRING	comment,listen,dictionary,mark,reward,share,dubbing,correction,copy	USER
+feature.read_page.remove_comment_share_limit	BOOLEAN	false	USER
+feature.read_page.custom_font.enabled	BOOLEAN	false	USER
+feature.read_page.custom_font.path	STRING		USER
+feature.read_page.custom_font.name	STRING		USER
+feature.read_page.custom_font.list	STRING		USER
+feature.read_page.background.local_unlock	BOOLEAN	false	USER
+feature.read_page.background.long_press_save	BOOLEAN	false	USER
+feature.ui.custom_font.enabled	BOOLEAN	false	USER
+feature.ui.custom_font.regular.path	STRING		USER
+feature.ui.custom_font.regular.name	STRING		USER
+feature.ui.custom_font.emphasis.path	STRING		USER
+feature.ui.custom_font.emphasis.name	STRING		USER
+feature.bookshelf.night_mode_same_as_day	BOOLEAN	false	USER
+feature.ui.hide_bookshelf_hover_ad	BOOLEAN	false	USER
+feature.ui.hide_bottom_tab_red_dot	BOOLEAN	false	USER
+feature.ui.hide_account_tab_red_dot	BOOLEAN	false	USER
+feature.daily_reading.hide_game_ad	BOOLEAN	false	USER
+feature.bookshelf.hide_book_activity_tag	BOOLEAN	false	USER
+feature.bookshelf.hide_update_notice	BOOLEAN	false	USER
+feature.bookshelf.hide_reading_time_card	BOOLEAN	false	USER
+feature.bookshelf.hide_top_activity_ad	BOOLEAN	false	USER
+feature.bookshelf.hide_left_top_activity_card	BOOLEAN	false	USER
+feature.navigation.bottom_tab.custom_enabled	BOOLEAN	false	USER
+feature.navigation.bottom_tab.order	STRING	shelf,selection,discover,mine	USER
+feature.navigation.bottom_tab.hidden	STRING		USER
+feature.navigation.bottom_tab.hide_activity	BOOLEAN	false	USER
+feature.home.top_action.custom_enabled	BOOLEAN	false	USER
+feature.home.top_action.order	STRING	search,game,more	USER
+feature.home.top_action.hidden	STRING		USER
+feature.page.mine.custom_enabled	BOOLEAN	false	USER
+feature.page.mine.entries	STRING		USER
+feature.page.mine.hidden	STRING		USER
+feature.page.mine.disable_auto_refresh	BOOLEAN	false	USER
+feature.page.selection.custom_enabled	BOOLEAN	false	USER
+feature.page.selection.entries	STRING		USER
+feature.page.selection.hidden	STRING		USER
+feature.page.selection.hide_guess	BOOLEAN	false	USER
+feature.page.book_detail.custom_enabled	BOOLEAN	false	USER
+feature.page.book_detail.entries	STRING		USER
+feature.page.book_detail.hidden	STRING		USER
+feature.page.book_detail.intro_free_copy	BOOLEAN	false	USER
+feature.page.book_detail.fans_rank	BOOLEAN	false	USER
+feature.page.book_detail.cover_original	BOOLEAN	false	USER
+feature.page.book_detail.role_avatar_original	BOOLEAN	false	USER
+feature.page.card_plaza.local_unlock	BOOLEAN	false	USER
+feature.page.card_preview.long_press_save	BOOLEAN	false	USER
+feature.page.profile.avatar_original	BOOLEAN	false	USER
+feature.page.profile.user_id	BOOLEAN	false	USER
+feature.page.profile.privacy_second_page_restore	BOOLEAN	false	USER
+feature.page.circle.free_copy	BOOLEAN	false	USER
+runtime.page_custom.pending_scan	STRING		RUNTIME
+feature.account.auto_sign_in	BOOLEAN	false	USER
+feature.account.auto_invest	BOOLEAN	false	USER
+runtime.account.auto_sign_in.last_date	STRING		RUNTIME
+runtime.account.auto_sign_in.last_user	LONG	-9223372036854775808	RUNTIME
+feature.read_time.multiplier.enabled	BOOLEAN	false	USER
+feature.read_time.multiplier.value	STRING	1.0	USER
+feature.read_time.local_display.real	BOOLEAN	false	USER
+runtime.read_time.audit_state_v1	STRING		RUNTIME
+runtime.read_time.cloud_audit_state_v1	STRING		RUNTIME
+runtime.read_time.effective_multiplier	STRING		RUNTIME
+feature.welfare.reward_ad.skip_enabled	BOOLEAN	false	USER
+feature.welfare.combo_reward.skip_enabled	BOOLEAN	false	USER
+feature.welfare.reward_popup.suppress_enabled	BOOLEAN	false	USER
+feature.network.custom_dns.enabled	BOOLEAN	false	USER
+feature.network.custom_dns.net_stack	STRING	3	USER
+feature.network.custom_dns.rules	STRING		USER
+feature.identity.custom_qimei.enabled	BOOLEAN	false	USER
+feature.identity.custom_qimei.value	STRING		USER
+feature.identity.custom_qimei36.value	STRING		USER
+feature.identity.custom_guid.enabled	BOOLEAN	false	USER
+feature.identity.custom_guid.value	STRING		USER
+feature.identity.multibox_report_shield.enabled	BOOLEAN	false	USER
+runtime.identity.custom_qimei.last_synced	STRING		RUNTIME
+runtime.identity.custom_qimei36.last_synced	STRING		RUNTIME
+feature.shield.book.enabled	BOOLEAN	false	USER
+feature.shield.book.quick_add	BOOLEAN	false	USER
+feature.shield.book.locations	STRING	selection_morphing,flutter_book_stream,daily_reading_flutter,bookstore_reborn,ranking,read_last_page_read_more,read_last_page_similar_book,read_last_page_recommend,read_last_page_recommend_by_tag	USER
+feature.shield.book.type_contains	BOOLEAN	false	USER
+feature.shield.book.allow_empty_result	BOOLEAN	false	USER
+debug.detailed_log.enabled	BOOLEAN	false	DEBUG
+debug.discovery.enabled	BOOLEAN	true	DEBUG
+debug.call_probe.enabled	BOOLEAN	true	DEBUG
+debug.welfare_reward_probe.enabled	BOOLEAN	true	DEBUG
+debug.device_identity_probe.enabled	BOOLEAN	true	DEBUG
+debug.welfare_reward.skip_once.enabled	BOOLEAN	false	DEBUG
+debug.welfare_reward.flutter_skip_once.enabled	BOOLEAN	false	DEBUG
+debug.welfare_reward.combo_skip_once.enabled	BOOLEAN	false	DEBUG
+debug.dexkit.enabled	BOOLEAN	true	DEBUG
+debug.dexkit.force_rescan	BOOLEAN	false	DEBUG
+debug.dexkit.log_candidates	BOOLEAN	true	DEBUG
+debug.shield_trace.enabled	BOOLEAN	true	DEBUG
+debug.host_collect_json.enabled	BOOLEAN	true	DEBUG
+runtime.disclaimer.accepted	BOOLEAN	false	RUNTIME

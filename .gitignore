@@ -1,0 +1,37 @@
+# Gradle / Android Studio local state
+.gradle/
+.kotlin/
+build/
+app/build/
+local.properties
+gradle/gradle-daemon-jvm.properties
+*.iml
+.idea/
+.claude/
+
+# Local signing keys and APK outputs
+*.jks
+*.keystore
+*.apk
+*.ap_
+app/release/
+
+# Local documentation, reverse-engineering and probe workspaces
+.local/
+docs/
+tmp/
+target_app/
+skills/
+org/
+
+# Root-level legacy UI captures/dumps. App resources remain trackable.
+/*.png
+/*.jpg
+/*.jpeg
+/*.webp
+/*.xml
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+*.log

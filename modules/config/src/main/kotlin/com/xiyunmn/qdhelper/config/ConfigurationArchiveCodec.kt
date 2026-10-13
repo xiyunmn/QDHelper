@@ -1,0 +1,176 @@
+package com.xiyunmn.qdhelper.config
+
+import org.json.JSONArray
+import org.json.JSONObject
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.nio.ByteBuffer
+import java.nio.charset.CodingErrorAction
+import java.security.MessageDigest
+import java.util.LinkedHashMap
+import java.util.zip.ZipEntry
+import java.util.zip.ZipInputStream
+import java.util.zip.ZipOutputStream
+
+data class ConfigurationArchiveFiles(
+    val settingsJson: String,
+    val bookShieldYaml: String,
+)
+
+object ConfigurationArchiveCodec {
+    const val FORMAT = "qdhelper-config"
+    const val FORMAT_VERSION = 1
+    const val MAX_ARCHIVE_BYTES = 2 * 1024 * 1024
+    const val MAX_ENTRY_BYTES = 1024 * 1024
+
+    private const val MAX_MANIFEST_BYTES = 64 * 1024
+    private const val MAX_TOTAL_BYTES = 2 * 1024 * 1024
+    private const val MANIFEST = "manifest.json"
+    private const val SETTINGS = "settings.json"
+    private const val BOOK_SHIELD = "book-shield.yaml"
+    private val requiredEntries = setOf(MANIFEST, SETTINGS, BOOK_SHIELD)
+    private val payloadEntries = setOf(SETTINGS, BOOK_SHIELD)
+
+    fun encode(files: ConfigurationArchiveFiles): ByteArray {
+        val payloads = linkedMapOf(
+            SETTINGS to files.settingsJson.toByteArray(Charsets.UTF_8),
+            BOOK_SHIELD to files.bookShieldYaml.toByteArray(Charsets.UTF_8),
+        )
+        payloads.forEach { (name, bytes) ->
+            require(bytes.size <= MAX_ENTRY_BYTES) { "$name 不能超过 1 MiB" }
+        }
+        val manifestEntries = JSONArray()
+        payloads.forEach { (name, bytes) ->
+            manifestEntries.put(
+                JSONObject()
+                    .put("name", name)
+                    .put("size", bytes.size)
+                    .put("sha256", sha256(bytes)),
+            )
+        }
+        val manifest = JSONObject()
+            .put("format", FORMAT)
+            .put("version", FORMAT_VERSION)
+            .put("entries", manifestEntries)
+            .toString(2)
+            .toByteArray(Charsets.UTF_8)
+        require(manifest.size <= MAX_MANIFEST_BYTES) { "manifest.json 过大" }
+        val archiveEntries = linkedMapOf(MANIFEST to manifest).also { it.putAll(payloads) }
+        require(archiveEntries.values.sumOf(ByteArray::size) <= MAX_TOTAL_BYTES) { "配置展开后超过 2 MiB" }
+        val archive = ByteArrayOutputStream().use { output ->
+            ZipOutputStream(output).use { zip ->
+                archiveEntries.forEach { (name, bytes) ->
+                    zip.putNextEntry(ZipEntry(name).apply { time = 0L })
+                    zip.write(bytes)
+                    zip.closeEntry()
+                }
+            }
+            output.toByteArray()
+        }
+        require(archive.size <= MAX_ARCHIVE_BYTES) { "生成的配置压缩包超过 2 MiB" }
+        return archive
+    }
+
+    fun decode(archive: ByteArray): ConfigurationArchiveFiles {
+        require(archive.size <= MAX_ARCHIVE_BYTES) { "配置压缩包不能超过 2 MiB" }
+        require(isZip(archive)) { "仅支持 QDHelper ZIP 配置包，旧版单 JSON 不再支持" }
+        val entries = readEntries(archive)
+        require(entries.keys == requiredEntries) {
+            "压缩包必须且只能包含 manifest.json、settings.json、book-shield.yaml"
+        }
+        val manifestText = decodeUtf8(entries.getValue(MANIFEST), MANIFEST)
+        verifyManifest(JSONObject(manifestText), entries)
+        return ConfigurationArchiveFiles(
+            settingsJson = decodeUtf8(entries.getValue(SETTINGS), SETTINGS),
+            bookShieldYaml = decodeUtf8(entries.getValue(BOOK_SHIELD), BOOK_SHIELD),
+        )
+    }
+
+    private fun readEntries(archive: ByteArray): Map<String, ByteArray> {
+        val result = LinkedHashMap<String, ByteArray>()
+        var total = 0
+        ZipInputStream(ByteArrayInputStream(archive)).use { zip ->
+            while (true) {
+                val entry = zip.nextEntry ?: break
+                val name = entry.name
+                require(!entry.isDirectory) { "压缩包不能包含目录" }
+                require(name in requiredEntries) { "压缩包包含未知文件：$name" }
+                require(name.none { it == '/' || it == '\\' } && name != "." && name != "..") {
+                    "压缩包包含非法路径"
+                }
+                require(name !in result) { "压缩包包含重复条目：$name" }
+                val limit = if (name == MANIFEST) MAX_MANIFEST_BYTES else MAX_ENTRY_BYTES
+                val bytes = readLimited(zip, limit, name)
+                total += bytes.size
+                require(total <= MAX_TOTAL_BYTES) { "压缩包展开后超过 2 MiB" }
+                result[name] = bytes
+                zip.closeEntry()
+            }
+        }
+        return result
+    }
+
+    private fun readLimited(input: ZipInputStream, limit: Int, name: String): ByteArray {
+        val output = ByteArrayOutputStream()
+        val buffer = ByteArray(8192)
+        while (true) {
+            val read = input.read(buffer)
+            if (read < 0) break
+            if (output.size() + read > limit) error("$name 超过 ${if (limit == MAX_MANIFEST_BYTES) "64 KiB" else "1 MiB"}")
+            output.write(buffer, 0, read)
+        }
+        return output.toByteArray()
+    }
+
+    private fun verifyManifest(manifest: JSONObject, entries: Map<String, ByteArray>) {
+        require(manifest.namesSet() == setOf("format", "version", "entries")) { "manifest.json 字段无效" }
+        require(manifest.stringField("format") == FORMAT && manifest.longField("version") == FORMAT_VERSION.toLong()) {
+            "不支持的配置压缩包版本"
+        }
+        val listed = manifest.optJSONArray("entries") ?: error("manifest.json 缺少 entries")
+        require(listed.length() == payloadEntries.size) { "manifest.json 条目数量无效" }
+        val seen = linkedSetOf<String>()
+        for (index in 0 until listed.length()) {
+            val item = listed.optJSONObject(index) ?: error("manifest.json 条目无效")
+            require(item.namesSet() == setOf("name", "size", "sha256")) { "manifest.json 条目字段无效" }
+            val name = item.stringField("name")
+            require(name in payloadEntries && seen.add(name)) { "manifest.json 包含未知或重复条目" }
+            val bytes = entries.getValue(name)
+            require(item.longField("size") == bytes.size.toLong()) { "文件大小校验失败：$name" }
+            val digest = item.stringField("sha256")
+            require(SHA256.matches(digest) && digest.equals(sha256(bytes), ignoreCase = true)) {
+                "文件校验失败：$name"
+            }
+        }
+        require(seen == payloadEntries) { "manifest.json 未完整列出配置文件" }
+    }
+
+    private fun JSONObject.namesSet(): Set<String> = keys().asSequence().toSet()
+
+    private fun JSONObject.stringField(name: String): String = get(name) as? String
+        ?: error("JSON 字段类型无效：$name")
+
+    private fun JSONObject.longField(name: String): Long = when (val value = get(name)) {
+        is Int -> value.toLong()
+        is Long -> value
+        else -> error("JSON 字段类型无效：$name")
+    }
+
+    private fun decodeUtf8(bytes: ByteArray, name: String): String = runCatching {
+        Charsets.UTF_8.newDecoder()
+            .onMalformedInput(CodingErrorAction.REPORT)
+            .onUnmappableCharacter(CodingErrorAction.REPORT)
+            .decode(ByteBuffer.wrap(bytes))
+            .toString()
+    }.getOrElse { error("$name 不是有效 UTF-8") }
+
+    private fun isZip(bytes: ByteArray): Boolean = bytes.size >= 4 &&
+        bytes[0] == 0x50.toByte() && bytes[1] == 0x4B.toByte() &&
+        bytes[2] == 0x03.toByte() && bytes[3] == 0x04.toByte()
+
+    private fun sha256(bytes: ByteArray): String = MessageDigest.getInstance("SHA-256")
+        .digest(bytes)
+        .joinToString("") { byte -> "%02x".format(byte.toInt() and 0xFF) }
+
+    private val SHA256 = Regex("[0-9a-fA-F]{64}")
+}

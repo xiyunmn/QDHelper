@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Install SDK
+        shell: pwsh
+        run: sdkmanager --channel=3 'platforms;android-37.0'
+      - name: Build compressed APKs without signing secrets
+        shell: pwsh
+        run: .\gradlew.bat verifyPackagedDebugModule :app:assembleBeta :app:assembleRelease -x lintVitalDebug -x lintVitalBeta -x lintVitalRelease --console=plain
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qdhelper-apks
+          path: app/build/outputs/apk/**/*.apk
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qdhelper-r8-mappings
+          path: app/build/outputs/mapping/**/mapping.txt
+          if-no-files-found: error

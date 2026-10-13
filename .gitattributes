@@ -1,0 +1,31 @@
+* text=auto eol=lf
+
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+*.kt text working-tree-encoding=UTF-8
+*.kts text working-tree-encoding=UTF-8
+*.java text working-tree-encoding=UTF-8
+*.xml text working-tree-encoding=UTF-8
+*.json text working-tree-encoding=UTF-8
+*.md text working-tree-encoding=UTF-8
+*.txt text working-tree-encoding=UTF-8
+*.properties text working-tree-encoding=UTF-8
+*.prop text working-tree-encoding=UTF-8
+*.pro text working-tree-encoding=UTF-8
+*.list text working-tree-encoding=UTF-8
+*.yml text working-tree-encoding=UTF-8
+*.yaml text working-tree-encoding=UTF-8
+LICENSE text working-tree-encoding=UTF-8
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.gif binary
+*.ico binary
+*.jar binary
+*.apk binary
+*.jks binary
+*.keystore binary

@@ -1,0 +1,32 @@
+Liquid glass third-party notices
+
+ForbidAd4TieBa
+https://github.com/aikavvak12una/ForbidAd4TieBa
+Reference commit: 90037020861e8d559e07a581c41fde640ebb8e02
+License: GNU GPL version 3; see gpl-3.0.txt.
+The material stack, six effect options, sizing and droplet interaction were
+adapted for Qidian's native controls, source capture and lifecycle management.
+
+compose-miuix-ui / miuix-blur 0.9.3
+Copyright 2026, compose-miuix-ui contributors
+License: Apache-2.0; see apache-2.0.txt.
+GlassLighting and GlassTilt adapt the highlight shader and gravity projection
+through the reference project's View/AGSL port. QDHelper adds its own lifecycle
+integration, disjoint page/tab captures and a touch-transparent foreground lens.
+
+Kyant0 / KernelSU
+https://github.com/tiann/KernelSU
+Reference commit: 3a7ac9dc0dc8c0b573fd4eb4836fd0860ef4242e
+License: Apache-2.0; see apache-2.0.txt.
+FloatingBottomBar (adapted upstream from compose-miuix-ui's
+IosLiquidGlassNavigationBar) and liquid/Lens.kt / CombinedBackdrop.kt (adapted
+upstream from Kyant0/AndroidLiquidGlass) inform the lens, signed drag deformation,
+specular lighting and combined backdrop. QDHelper ports the optical layers to
+native View/RenderNode rendering and retains Qidian's controls and gesture routing.
+
+WeChat-LiquidGlass
+https://github.com/liuran001/WeChat-LiquidGlass
+Reference commit: 5d120f15e08665d27f1a552f6138101aa6dee4b2
+Copyright (c) 2026 liuran001
+License: MIT; see wechat-liquidglass.txt.
+Spring integration and droplet optics are adapted for QDHelper's renderer.

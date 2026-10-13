@@ -1,0 +1,34 @@
+# 第三方许可与来源
+
+QDHelper 自有代码：Copyright (C) 2026 xiyunmn，采用 **AGPL-3.0-only**，完整文本见 [LICENSE](LICENSE)。第三方原代码和改编部分继续保留其原许可、版权及署名；根许可证不覆盖或替换这些许可。
+
+## 直接参考或改编的代码
+
+完整来源记录随 APK 打包在 `licenses/glass-notices.txt`，源码中的已有 SPDX 和版权头均保留。
+
+| 来源 | 参考版本 / 提交 | 本项目中的使用 | 原许可 |
+| --- | --- | --- | --- |
+| [ForbidAd4TieBa](https://github.com/aikavvak12una/ForbidAd4TieBa) | `90037020861e8d559e07a581c41fde640ebb8e02` | 玻璃材质栈、六项效果、尺寸和拖拽交互适配 | GPL v3 |
+| [compose-miuix-ui / miuix-blur](https://github.com/compose-miuix-ui/miuix) | 0.9.3 | GlassLighting、GlassTilt 的着色和重力投影适配；Copyright 2026 compose-miuix-ui contributors | Apache-2.0 |
+| [KernelSU / Kyant0](https://github.com/tiann/KernelSU) | `3a7ac9dc0dc8c0b573fd4eb4836fd0860ef4242e` | 浮动底栏、高光与透镜的 View/RenderNode 适配 | Apache-2.0 |
+| [WeChat-LiquidGlass](https://github.com/liuran001/WeChat-LiquidGlass) | `5d120f15e08665d27f1a552f6138101aa6dee4b2` | 弹簧和液滴光学适配；Copyright (c) 2026 liuran001 | MIT |
+
+相关完整文本与改编说明位于 [shared-ui 许可目录](modules/shared-ui/src/main/resources/licenses/)。这些代码由 QDHelper 修改以适配宿主原生控件、生命周期、触摸分发及资源释放，具体范围见 `glass-notices.txt` 和源文件注释。
+
+## 构建依赖与图标
+
+| 组件 | 原许可与来源 |
+| --- | --- |
+| AndroidX / Jetpack Compose | [Apache-2.0 / Android Open Source Project](https://android.googlesource.com/platform/frameworks/support/) |
+| Kotlin / kotlinx.coroutines | [Apache-2.0 / JetBrains](https://github.com/JetBrains/kotlin) |
+| DexKit 2.3.0 | [上层接口 Apache-2.0](https://github.com/LuckyPray/DexKit/blob/2.3.0/LICENSE)、[Core 原生实现 LGPL-3.0](https://github.com/LuckyPray/DexKit/blob/2.3.0/Core/LICENSE)，Copyright LuckyPray；公开依赖使用上游发行版本 |
+| Compose Icons Lucide Android 2.2.1 | [MIT / Composable Horizons](https://github.com/composablehorizons/composeicons/blob/main/LICENSE)，Copyright (c) 2025 Composable Horizons |
+| Lucide 图标及其 Feather 来源 | [ISC / Lucide](https://github.com/lucide-icons/lucide/blob/main/LICENSE)，完整文本包含 Lucide 与 Feather 的原署名 |
+| SnakeYAML Engine | [Apache-2.0](https://bitbucket.org/snakeyaml/snakeyaml-engine/src/master/LICENSE.txt) |
+| libxposed API 102 | [Apache-2.0](https://github.com/libxposed/api/blob/master/LICENSE)，compileOnly，不将 API 实现打入 APK |
+
+DexKit、图标组件的完整许可原文保存在 [应用依赖许可目录](app/src/main/resources/licenses/dependencies/)。Apache-2.0 和 GPL v3 完整文本保存在 shared-ui 许可目录。项目许可及本声明同样随 APK 打包；构建依赖自身携带的其他 NOTICE、版权和许可证仍然适用。
+
+维护时保留已有版权、许可和修改说明；新增直接改编代码需记录来源、参考版本/提交、涉及文件及修改内容，并加入对应许可全文。升级依赖时同步核对许可证变更。
+
+本项目与保留 GPL v3 原许可的改编部分结合时，按 GPL v3 第 13 条与 AGPL v3 第 13 条处理；GPL 部分不被重新标为 AGPL，组合程序适用相应的网络源码提供要求。
