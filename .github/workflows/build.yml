@@ -33,13 +33,26 @@ jobs:
       - name: Build compressed APKs without signing secrets
         shell: pwsh
         run: .\gradlew.bat verifyPackagedDebugModule :app:assembleBeta :app:assembleRelease -x lintVitalDebug -x lintVitalBeta -x lintVitalRelease --console=plain
-      - uses: actions/upload-artifact@v4
+      - name: Prepare APK downloads
+        id: apks
+        uses: ./.github/actions/prepare-apks
         with:
-          name: qdhelper-apks
-          path: app/build/outputs/apk/**/*.apk
+          channels: debug,beta,release
+      - name: Upload Debug APK
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          path: ${{ steps.apks.outputs.debug }}
+          archive: false
           if-no-files-found: error
-      - uses: actions/upload-artifact@v4
+      - name: Upload Beta APK
+        uses: actions/upload-artifact@v7.0.2
         with:
-          name: qdhelper-r8-mappings
-          path: app/build/outputs/mapping/**/mapping.txt
+          path: ${{ steps.apks.outputs.beta }}
+          archive: false
+          if-no-files-found: error
+      - name: Upload Release APK
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          path: ${{ steps.apks.outputs.release }}
+          archive: false
           if-no-files-found: error

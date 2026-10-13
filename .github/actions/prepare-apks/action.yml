@@ -1,0 +1,54 @@
+name: Prepare APK downloads
+description: Stage one APK per channel with its version and channel in the filename.
+
+inputs:
+  channels:
+    description: Comma-separated build channels to prepare.
+    required: true
+
+outputs:
+  debug:
+    description: Path to the Debug APK, when requested.
+    value: ${{ steps.prepare.outputs.debug }}
+  beta:
+    description: Path to the Beta APK, when requested.
+    value: ${{ steps.prepare.outputs.beta }}
+  release:
+    description: Path to the Release APK, when requested.
+    value: ${{ steps.prepare.outputs.release }}
+
+runs:
+  using: composite
+  steps:
+    - id: prepare
+      shell: pwsh
+      env:
+        APK_CHANNELS: ${{ inputs.channels }}
+      run: |
+        $ErrorActionPreference = 'Stop'
+        $destination = Join-Path $env:RUNNER_TEMP 'qdhelper-apks'
+        New-Item -ItemType Directory -Path $destination -Force | Out-Null
+        foreach ($channel in ($env:APK_CHANNELS -split ',')) {
+          $channel = $channel.Trim()
+          if ($channel -notin @('debug', 'beta', 'release')) {
+            throw "Unsupported APK channel: $channel"
+          }
+          $outputDirectory = Join-Path $env:GITHUB_WORKSPACE "app/build/outputs/apk/$channel"
+          $metadata = Get-Content -LiteralPath (Join-Path $outputDirectory 'output-metadata.json') -Raw | ConvertFrom-Json
+          if ($metadata.variantName -ne $channel -or @($metadata.elements).Count -ne 1) {
+            throw "Expected exactly one APK for $channel."
+          }
+          $element = $metadata.elements[0]
+          $version = [string]$element.versionName
+          $version = $version -replace "-$channel$", ''
+          if ($version -notmatch '^[0-9][A-Za-z0-9.+-]*$') {
+            throw "Invalid APK version for $channel."
+          }
+          $sourceName = [string]$element.outputFile
+          if ([IO.Path]::GetFileName($sourceName) -ne $sourceName -or $sourceName -notlike '*.apk') {
+            throw "Invalid APK filename for $channel."
+          }
+          $apkPath = Join-Path $destination "qdhelper-v$version-$channel.apk"
+          Copy-Item -LiteralPath (Join-Path $outputDirectory $sourceName) -Destination $apkPath -Force
+          "$channel=$apkPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+        }
