@@ -1,0 +1,106 @@
+name: Update download badge
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/downloads.yml']
+  release:
+    types: [published, deleted]
+  schedule:
+    - cron: '23 */6 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: download-badge
+  cancel-in-progress: false
+
+jobs:
+  update:
+    if: github.repository == 'xiyunmn/QDHelper'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Sum release downloads and update the badge
+        uses: actions/github-script@v9.0.0
+        with:
+          script: |
+            const sources = [
+              { ...context.repo, optional: false },
+              { owner: 'Xposed-Modules-Repo', repo: 'io.github.xiyunmn.qdhelper', optional: true },
+            ];
+            let total = 0;
+            for (const { owner, repo, optional } of sources) {
+              let releases;
+              try {
+                releases = await github.paginate(github.rest.repos.listReleases, { owner, repo, per_page: 100 });
+              } catch (error) {
+                if (optional && error.status === 404) {
+                  core.info(`${owner}/${repo} is not available yet; counting zero downloads.`);
+                  continue;
+                }
+                throw error;
+              }
+              for (const release of releases.filter(release => !release.draft)) {
+                const assets = await github.paginate(github.rest.repos.listReleaseAssets, {
+                  owner, repo, release_id: release.id, per_page: 100,
+                });
+                total += assets.reduce((sum, asset) => sum + asset.download_count, 0);
+              }
+            }
+
+            const branch = 'badges';
+            const path = 'downloads.json';
+            const content = JSON.stringify({
+              schemaVersion: 1,
+              label: 'Downloads',
+              message: total.toLocaleString('en-US'),
+              color: 'brightgreen',
+              namedLogo: 'github',
+            }, null, 2) + '\n';
+            let previous;
+            try {
+              const response = await github.rest.repos.getContent({ ...context.repo, path, ref: branch });
+              previous = response.data;
+              if (previous.type !== 'file' || previous.encoding !== 'base64') {
+                throw new Error('Expected the download badge to be a Base64-encoded file.');
+              }
+              if (Buffer.from(previous.content, 'base64').toString('utf8') === content) {
+                core.info(`Download count is unchanged: ${total}.`);
+                return;
+              }
+            } catch (error) {
+              if (error.status !== 404) throw error;
+            }
+
+            const message = `Update download count to ${total}`;
+            if (!previous) {
+              let branchExists = true;
+              try {
+                await github.rest.git.getRef({ ...context.repo, ref: `heads/${branch}` });
+              } catch (error) {
+                if (error.status !== 404) throw error;
+                branchExists = false;
+              }
+              if (!branchExists) {
+                const tree = await github.rest.git.createTree({
+                  ...context.repo,
+                  tree: [{ path, mode: '100644', type: 'blob', content }],
+                });
+                const commit = await github.rest.git.createCommit({
+                  ...context.repo, message, tree: tree.data.sha, parents: [],
+                });
+                await github.rest.git.createRef({
+                  ...context.repo, ref: `refs/heads/${branch}`, sha: commit.data.sha,
+                });
+                return;
+              }
+            }
+            await github.rest.repos.createOrUpdateFileContents({
+              ...context.repo, branch, path, message,
+              content: Buffer.from(content).toString('base64'),
+              ...(previous ? { sha: previous.sha } : {}),
+            });

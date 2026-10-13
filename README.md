@@ -1,10 +1,17 @@
 # QDHelper
 
+[![Kotlin](https://img.shields.io/badge/Kotlin-7F52FF?style=flat-square&logo=kotlin&logoColor=white)](https://kotlinlang.org/)
+[![libxposed API 102](https://img.shields.io/badge/libxposed-API%20102-3DDC84?style=flat-square)](https://github.com/libxposed/api)
+[![AGPL-3.0-only](https://img.shields.io/badge/License-AGPL--3.0--only-blue?style=flat-square)](LICENSE)
+[![Downloads](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fxiyunmn%2FQDHelper%2Fbadges%2Fdownloads.json&style=flat-square)](https://github.com/xiyunmn/QDHelper/releases)
+[![Release](https://img.shields.io/github/v/release/xiyunmn/QDHelper?style=flat-square&label=Release)](https://github.com/xiyunmn/QDHelper/releases/latest)
+
 QDHelper 是面向起点读书的 LSPosed 功能增强模块，提供广告与弹窗清理、界面定制、阅读优化、书籍屏蔽等功能。
 
 当前版本：`1.0.0`
 
 源码仓库：[xiyunmn/QDHelper](https://github.com/xiyunmn/QDHelper)
+
 
 ## 支持范围
 
