@@ -91,8 +91,10 @@ internal class GlassContentInsets(
             target.clipping?.set(false)
         }
         flutterViews.forEach { view ->
-            view.getLocationOnScreen(location)
-            flutter.update(view, GlassGeometry.occlusion(location[1] + view.height, viewportBottom, barTop, visible))
+            // Flutter consumes viewPaddingBottom in the page's SafeArea, not as scroll-tail
+            // padding. Adding the floating bar's height clips the entire page above the bar.
+            // Keep the host's real window insets so content can draw behind and below it.
+            flutter.update(view, 0)
         }
     }
 
