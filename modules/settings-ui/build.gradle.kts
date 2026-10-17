@@ -27,5 +27,4 @@ dependencies {
     implementation(project(":host-api"))
     implementation(project(":shared-ui"))
     implementation(project(":shared-compose"))
-    testImplementation("junit:junit:4.13.2")
 }

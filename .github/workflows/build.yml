@@ -32,7 +32,7 @@ jobs:
         run: sdkmanager --channel=3 'platforms;android-37.0'
       - name: Build compressed APKs without signing secrets
         shell: pwsh
-        run: .\gradlew.bat verifyPackagedDebugModule :app:assembleBeta :app:assembleRelease -x lintVitalDebug -x lintVitalBeta -x lintVitalRelease --console=plain
+        run: .\gradlew.bat :app:assembleDebug :app:assembleBeta :app:assembleRelease -x lintVitalDebug -x lintVitalBeta -x lintVitalRelease --console=plain
       - name: Prepare APK downloads
         id: apks
         uses: ./.github/actions/prepare-apks

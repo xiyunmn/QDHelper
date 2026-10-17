@@ -35,3 +35,8 @@ org/
 .DS_Store
 Thumbs.db
 *.log
+
+# Local agent instructions: never commit
+AGENTS.md
+AGENTS.override.md
+Agent.md

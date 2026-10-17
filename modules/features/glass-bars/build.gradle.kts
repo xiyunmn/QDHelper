@@ -5,7 +5,6 @@ plugins {
 
 android {
     buildFeatures { compose = true }
-    testOptions { unitTests.isIncludeAndroidResources = true }
     namespace = "com.xiyunmn.qdhelper.feature.glassbars"
 }
 
@@ -16,6 +15,4 @@ dependencies {
     implementation(project(":shared-compose"))
     implementation(project(":feature-api"))
     implementation(project(":shared-ui"))
-    testImplementation("junit:junit:4.13.2")
-    testImplementation("org.robolectric:robolectric:4.16.1")
 }

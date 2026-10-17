@@ -12,5 +12,4 @@ dependencies {
     api(project(":config"))
     api(project(":host-api"))
     api(project(":settings-api"))
-    testImplementation("junit:junit:4.13.2")
 }

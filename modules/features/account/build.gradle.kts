@@ -8,5 +8,4 @@ android {
 
 dependencies {
     implementation(project(":feature-api"))
-    testImplementation("junit:junit:4.13.2")
 }

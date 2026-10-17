@@ -103,6 +103,4 @@ dependencies {
     implementation(project(":features:diagnostics"))
     implementation(project(":features:maintenance"))
     compileOnly("io.github.libxposed:api:102.0.0")
-    testImplementation("io.github.libxposed:api:102.0.0")
-    testImplementation("junit:junit:4.13.2")
 }

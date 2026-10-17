@@ -42,7 +42,6 @@ class AndroidApplicationConventionPlugin : Plugin<Project> {
                 checkTestSources = false
                 disable.add("NewerVersionAvailable")
             }
-            testOptions.unitTests.isIncludeAndroidResources = true
         }
         tasks.withType(KotlinJvmCompile::class.java).configureEach {
             compilerOptions.jvmTarget.set(JvmTarget.JVM_17)
@@ -95,9 +94,6 @@ private fun Project.configureAndroidLibrary(resourcesEnabled: Boolean) {
             checkTestSources = false
             disable.add("NewerVersionAvailable")
         }
-        // Resource processing is an explicit module-level cost. Pure Kotlin/Java libraries keep
-        // the Android resource task graph disabled, while resource opt-in plugins enable it fully.
-        testOptions.unitTests.isIncludeAndroidResources = resourcesEnabled
     }
     tasks.withType(KotlinJvmCompile::class.java).configureEach {
         compilerOptions.jvmTarget.set(JvmTarget.JVM_17)

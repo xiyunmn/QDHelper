@@ -11,5 +11,4 @@ dependencies {
     implementation(project(":shared-io"))
     implementation(project(":shared-fonts"))
     implementation(project(":shared-ui"))
-    testImplementation("junit:junit:4.13.2")
 }

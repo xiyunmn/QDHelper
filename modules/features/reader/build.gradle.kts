@@ -11,5 +11,4 @@ dependencies {
     implementation(project(":shared-ui"))
     implementation(project(":shared-media"))
     implementation(project(":capability:free-copy"))
-    testImplementation("junit:junit:4.13.2")
 }

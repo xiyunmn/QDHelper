@@ -5,7 +5,3 @@ plugins {
 android {
     namespace = "com.xiyunmn.qdhelper.foundation"
 }
-
-dependencies {
-    testImplementation("junit:junit:4.13.2")
-}

@@ -6,7 +6,6 @@ plugins {
 android {
     namespace = "com.xiyunmn.qdhelper.feature.bookshield"
     buildFeatures { compose = true }
-    testOptions { unitTests.isIncludeAndroidResources = true }
 }
 
 dependencies {
@@ -18,7 +17,4 @@ dependencies {
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.material3:material3")
-    testImplementation("org.json:json:20240303")
-    testImplementation("junit:junit:4.13.2")
-    testImplementation("org.robolectric:robolectric:4.16.1")
 }

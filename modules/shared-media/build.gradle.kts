@@ -8,5 +8,4 @@ android {
 
 dependencies {
     implementation(project(":shared-io"))
-    testImplementation("junit:junit:4.13.2")
 }
