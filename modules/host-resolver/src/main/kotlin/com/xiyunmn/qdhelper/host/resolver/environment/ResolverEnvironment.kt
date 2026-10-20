@@ -3,6 +3,7 @@ package com.xiyunmn.qdhelper.host.resolver.environment
 import android.content.Context
 import com.xiyunmn.qdhelper.config.ConfigRuntime
 import com.xiyunmn.qdhelper.config.SettingIds
+import com.xiyunmn.qdhelper.config.SettingsRuntime
 import com.xiyunmn.qdhelper.host.resolver.prewarm.TargetPrewarmPlanner
 import com.xiyunmn.qdhelper.host.resolver.reflection.ReflectionAccess
 import com.xiyunmn.qdhelper.host.resolver.runtime.ResolverInstallRetryEvents
@@ -28,7 +29,7 @@ object ResolverEnvironment {
 
     fun isForceRescanEnabled(context: Context?): Boolean = enabled(context, SettingIds.KEY_DEBUG_DEXKIT_FORCE_RESCAN)
 
-    fun isCandidateLogEnabled(context: Context?): Boolean = enabled(context, SettingIds.KEY_DEBUG_DEXKIT_LOG_CANDIDATES)
+    fun isCandidateLogEnabled(context: Context?): Boolean = SettingsRuntime.isDexKitCandidateLogEnabled(context)
 
     fun close() {
         ResolverInstallRetryEvents.clear()

@@ -77,6 +77,11 @@ object AutoInvestFeature : InstallableFeature {
         if (!HostSymbols.isMainProcess(processName)) return
         prepareRuntime(classLoader)
         subscribeActivityLifecycle()
+        mainHandler.post {
+            if (activeClassLoader !== classLoader) return@post
+            ActivityLifecycleCallbacks.currentActivities().firstOrNull { it.hasWindowFocus() }
+                ?.let(::onActivityVisible)
+        }
         val installed = installReportedReadObservation(module, classLoader, phase)
         FeatureHooks.i(
             "Auto-invest phase finished: phase=$phase, process=$processName, reportedReadObservation=$installed",

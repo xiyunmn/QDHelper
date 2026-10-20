@@ -21,7 +21,7 @@ object AccountSettingsContribution : SettingsContribution {
                 SettingsRow.Toggle(
                     id = "account.auto-sign-in",
                     title = "自动签到",
-                    summary = "前台进入起点后自动签到，每天执行一次。",
+                    summary = "前台进入起点后自动签到，每天执行一次；享有会员自动签到时由起点处理。",
                     key = SettingIds.KEY_AUTO_SIGN_IN_ENABLED,
                 ),
                 SettingsRow.Toggle(

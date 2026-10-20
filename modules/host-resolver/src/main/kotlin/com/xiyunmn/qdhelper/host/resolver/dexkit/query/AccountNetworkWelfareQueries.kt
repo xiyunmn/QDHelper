@@ -497,6 +497,34 @@ internal object AccountNetworkWelfareQueries {
                 method.returnType == Boolean::class.javaPrimitiveType
         },
     )
+    val autoSignInMembershipEligible = DexKitMethodQuery(
+        id = "account.auto_sign_in.manager.membership_eligible",
+        purpose = "host membership auto-sign-in eligibility",
+        query = {
+            searchPackages("com.qidian.QDReader.component.manager")
+            matcher {
+                declaredClass(HostSymbols.Classes.CHECK_IN_MANAGER)
+                modifiers(Modifier.PRIVATE)
+                paramCount(0)
+                returnType(Boolean::class.javaPrimitiveType!!)
+                callerMethods {
+                    add {
+                        declaredClass(HostSymbols.Classes.CHECK_IN_MANAGER)
+                        addUsingString("auto_check_in_start", StringMatchType.Equals)
+                        addUsingString("auto_check_in_skip", StringMatchType.Equals)
+                    }
+                }
+            }
+        },
+        verify = { method ->
+            method.declaringClass.name == HostSymbols.Classes.CHECK_IN_MANAGER &&
+                Modifier.isPrivate(method.modifiers) &&
+                !Modifier.isStatic(method.modifiers) &&
+                method.parameterTypes.isEmpty() &&
+                method.returnType == Boolean::class.javaPrimitiveType
+        },
+    )
+
     val autoSignInSyncCheckedIn = namedMethod(
         id = "account.auto_sign_in.manager.sync_checked_in",
         purpose = "auto-sign-in manager sync_checked_in",

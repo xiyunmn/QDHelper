@@ -101,6 +101,7 @@ internal object TargetQueryCatalog {
             AccountNetworkWelfareQueries.autoSignInManagerInstance,
             AccountNetworkWelfareQueries.autoSignInCheckInRequest,
             AccountNetworkWelfareQueries.autoSignInAlreadyCheckedIn,
+            AccountNetworkWelfareQueries.autoSignInMembershipEligible,
             AccountNetworkWelfareQueries.autoSignInSyncCheckedIn,
             AccountNetworkWelfareQueries.autoInvestDetailApi,
             AccountNetworkWelfareQueries.autoInvestLegacyRxAdapter,

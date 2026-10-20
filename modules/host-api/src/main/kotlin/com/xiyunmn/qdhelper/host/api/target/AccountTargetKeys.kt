@@ -5,6 +5,7 @@ object AccountTargetKeys {
     val checkInManagerInstance = method("account.auto_sign_in.manager.instance")
     val checkInRequest = method("account.auto_sign_in.manager.check_in_request")
     val alreadyCheckedIn = method("account.auto_sign_in.manager.already_checked_in")
+    val membershipAutoSignIn = method("account.auto_sign_in.manager.membership_eligible")
     val syncCheckedIn = method("account.auto_sign_in.manager.sync_checked_in")
     val autoInvestDetailApi = method("account.auto_invest.detail_api")
     val autoInvestLegacyRxAdapter = method("account.auto_invest.legacy_rx_adapter")
@@ -17,6 +18,7 @@ object AccountTargetKeys {
         checkInManagerInstance,
         checkInRequest,
         alreadyCheckedIn,
+        membershipAutoSignIn,
         syncCheckedIn,
     )
 

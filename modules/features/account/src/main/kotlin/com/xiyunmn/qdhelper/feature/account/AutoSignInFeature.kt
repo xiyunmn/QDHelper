@@ -62,6 +62,14 @@ object AutoSignInFeature : InstallableFeature {
     ) {
         activeClassLoader = classLoader
         subscribeActivityCallbacks()
+        mainHandler.post {
+            if (activeClassLoader !== classLoader) return@post
+            ActivityLifecycleCallbacks.currentActivities().forEach { activity ->
+                if (activity.javaClass.name == QDReaderHost.Classes.MAIN_GROUP_ACTIVITY && activity.hasWindowFocus()) {
+                    tryAutoSignIn(activity, classLoader, phase)
+                }
+            }
+        }
         FeatureHooks.i("Auto sign-in phase finished: phase=$phase, process=$processName, lifecycleSubscriptions=${lifecycleSubscriptions.size}")
     }
 
@@ -98,7 +106,7 @@ object AutoSignInFeature : InstallableFeature {
             FeatureHooks.i("Auto sign-in skipped: not logged in, reason=$reason")
             return
         }
-        val today = dateFormat.format(Date())
+        val today = currentDay()
         if (SettingsRuntime.hasAutoSignInAttempted(context, userId, today)) {
             return
         }
@@ -134,6 +142,10 @@ object AutoSignInFeature : InstallableFeature {
         reason: String,
         attemptKey: String,
     ) {
+        if (!isCurrentAttempt(context, classLoader, userId, today) || activity.isFinishing || activity.isDestroyed) {
+            pendingAttempts.remove(attemptKey)
+            return
+        }
         val instanceMethod = resolveHostMethod(
             classLoader,
             AccountTargetKeys.checkInManagerInstance,
@@ -141,6 +153,15 @@ object AutoSignInFeature : InstallableFeature {
             ?: error("UserCheckInManager instance method not found")
         val manager = FeatureHooks.invoke(instanceMethod, null)
             ?: error("UserCheckInManager instance is null")
+        val membershipMethod = resolveHostMethod(classLoader, AccountTargetKeys.membershipAutoSignIn)
+            ?: error("Host membership auto-sign-in eligibility method not found")
+        val membershipEligible = FeatureHooks.invoke(membershipMethod, manager) as? Boolean
+            ?: error("Host membership auto-sign-in eligibility unavailable")
+        if (membershipEligible) {
+            pendingAttempts.remove(attemptKey)
+            FeatureHooks.i("Auto sign-in skipped: host membership auto-sign-in eligible")
+            return
+        }
         if (isHostAlreadyCheckedIn(manager)) {
             markAttempt(context, userId, today, "host-already-checked-in")
             pendingAttempts.remove(attemptKey)
@@ -160,7 +181,11 @@ object AutoSignInFeature : InstallableFeature {
         val subscribed = subscribeObservable(
             observable = request,
             classLoader = classLoader,
-            onNext = { response ->
+            onNext = onNext@ { response ->
+                if (!isCurrentAttempt(context, classLoader, userId, today)) {
+                    pendingAttempts.remove(attemptKey)
+                    return@onNext
+                }
                 val summary = summarizeServerResponse(response)
                 if (summary.isSuccessOrAlreadyCheckedIn) {
                     syncHostCheckInState(manager)
@@ -181,7 +206,11 @@ object AutoSignInFeature : InstallableFeature {
                 }
                 pendingAttempts.remove(attemptKey)
             },
-            onError = { throwable ->
+            onError = onError@ { throwable ->
+                if (!isCurrentAttempt(context, classLoader, userId, today)) {
+                    pendingAttempts.remove(attemptKey)
+                    return@onError
+                }
                 val message = throwable.message.orEmpty()
                 if (isAlreadyCheckedInMessage(message)) {
                     syncHostCheckInState(manager)
@@ -412,6 +441,12 @@ object AutoSignInFeature : InstallableFeature {
 
     private fun currentUserId(classLoader: ClassLoader): Long =
         currentHostUserId(HostSessionStore.contextOrNull(), classLoader) ?: 0L
+
+    private fun currentDay(): String = synchronized(dateFormat) { dateFormat.format(Date()) }
+
+    private fun isCurrentAttempt(context: Context, classLoader: ClassLoader, userId: Long, day: String): Boolean =
+        activeClassLoader === classLoader && SettingsRuntime.isAutoSignInEnabled(context) &&
+            currentUserId(classLoader) == userId && currentDay() == day
 
     private fun resolveHostMethod(
         classLoader: ClassLoader,
