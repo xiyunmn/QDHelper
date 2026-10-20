@@ -6,8 +6,6 @@ object RuntimeStateMigrationV1 {
     private val stringKeys = listOf(
         SettingIds.KEY_PAGE_CUSTOM_PENDING_SCAN,
         SettingIds.KEY_AUTO_SIGN_IN_LAST_DATE,
-        SettingIds.KEY_CUSTOM_QIMEI_LAST_SYNCED,
-        SettingIds.KEY_CUSTOM_QIMEI36_LAST_SYNCED,
     )
     private const val LONG_KEY = SettingIds.KEY_AUTO_SIGN_IN_LAST_USER
 

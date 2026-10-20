@@ -95,6 +95,7 @@ object WelfareRewardProbeFeature : InstallableFeature {
             installedHooks += installWelfareMethodCallProbe(module, classLoader, phase)
             installedHooks += installShowGdtAdProbe(module, classLoader, phase)
             installedHooks += installGdtForQdProbe(module, classLoader, phase)
+            installedHooks += installNativeRewardSource(module, classLoader, phase)
             installedHooks += installTangramRewardAdProbe(module, classLoader, phase)
             installedHooks += installH5RewardBridgeProbe(module, classLoader, phase)
             installedHooks += installWelfareTaskApiProbe(module, classLoader, phase)

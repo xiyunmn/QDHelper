@@ -132,13 +132,6 @@ object SettingIds {
     const val KEY_CUSTOM_DNS_ENABLED = "feature.network.custom_dns.enabled"
     const val KEY_CUSTOM_DNS_NET_STACK = "feature.network.custom_dns.net_stack"
     const val KEY_CUSTOM_DNS_RULES = "feature.network.custom_dns.rules"
-    const val KEY_CUSTOM_QIMEI_ENABLED = "feature.identity.custom_qimei.enabled"
-    const val KEY_CUSTOM_QIMEI_VALUE = "feature.identity.custom_qimei.value"
-    const val KEY_CUSTOM_QIMEI36_VALUE = "feature.identity.custom_qimei36.value"
-    const val KEY_CUSTOM_GUID_ENABLED = "feature.identity.custom_guid.enabled"
-    const val KEY_CUSTOM_GUID_VALUE = "feature.identity.custom_guid.value"
-    const val KEY_CUSTOM_QIMEI_LAST_SYNCED = "runtime.identity.custom_qimei.last_synced"
-    const val KEY_CUSTOM_QIMEI36_LAST_SYNCED = "runtime.identity.custom_qimei36.last_synced"
     const val KEY_BOOK_SHIELD_ENABLED = "feature.shield.book.enabled"
     const val KEY_BOOK_SHIELD_QUICK_ADD = "feature.shield.book.quick_add"
     const val KEY_BOOK_SHIELD_LOCATIONS = "feature.shield.book.locations"
@@ -158,6 +151,5 @@ object SettingIds {
     const val KEY_DEBUG_DEXKIT_LOG_CANDIDATES = "debug.dexkit.log_candidates"
     const val KEY_DEBUG_SHIELD_TRACE_ENABLED = "debug.shield_trace.enabled"
     const val KEY_DEBUG_HOST_COLLECT_JSON_ENABLED = "debug.host_collect_json.enabled"
-    const val KEY_MULTIBOX_REPORT_SHIELD_ENABLED = "feature.identity.multibox_report_shield.enabled"
 
 }

@@ -5,7 +5,7 @@ import com.xiyunmn.qdhelper.host.resolver.reflection.ReflectionAccess
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 
-/** Ordered contracts audited against JADX and smali for 7.9.469 through 7.9.480. */
+/** Ordered contracts retain earlier variants and the 7.9.482 event/error stream shapes. */
 internal object WelfareRecoveryContracts {
     private const val STRING = "java.lang.String"
     private const val JSON = "org.json.JSONObject"
@@ -27,19 +27,32 @@ internal object WelfareRecoveryContracts {
         !Modifier.isStatic(method.modifiers) && method.returnType == Void.TYPE &&
             method.parameterTypes.map { it.name } == parameters &&
             method.declaringClass.name.startsWith("com.qidian.QDReader.webview.plugins.") &&
-            generateSequence(method.declaringClass.superclass) { it.superclass }
-                .any { it.name == HostSymbols.Classes.WEBVIEW_PLUGIN }
+            HostInfrastructureContracts.extendsWebViewPlugin(method.declaringClass)
 
     fun isNativeEvent(method: Method): Boolean =
         Modifier.isStatic(method.modifiers) && method.returnType == Void.TYPE &&
             method.parameterTypes.map { it.name } == nativeEventParameters &&
             method.declaringClass.name.startsWith("com.qidian.QDReader.extras.")
 
-    fun isGroupedError(method: Method): Boolean =
-        Modifier.isStatic(method.modifiers) && method.returnType == Void.TYPE &&
-            method.parameterTypes.firstOrNull()?.let { HostMethodContracts.isWelfareDialog(it) } == true &&
-            method.parameterTypes.drop(1).map { it.name } in groupedErrorTails &&
-            method.declaringClass.name.startsWith("com.qidian.QDReader.extras.")
+    fun isGroupedError(method: Method): Boolean {
+        if (!Modifier.isStatic(method.modifiers) ||
+            !method.declaringClass.name.startsWith("com.qidian.QDReader.extras.") ||
+            method.parameterTypes.firstOrNull()?.let { HostMethodContracts.isWelfareDialog(it) } != true
+        ) return false
+        val tail = method.parameterTypes.drop(1).map { it.name }
+        if (method.returnType == Void.TYPE) return tail in groupedErrorTails
+        // ObservableSource is obfuscated too; identify its single subscribe(Observer) contract.
+        val source = method.returnType
+        return tail == listOf(ATOMIC_INT, "int", ATOMIC_INT, "int", VERIFY, REF, CONFIG, REF, "java.lang.Throwable") &&
+            isObservableSource(source)
+    }
+
+    fun isObservableSource(source: Class<*>): Boolean =
+        source.isInterface && source.name.startsWith("io.reactivex.") &&
+            ReflectionAccess.methodsDeclaredBy(source).singleOrNull()?.let {
+                it.name == "subscribe" && it.returnType == Void.TYPE &&
+                    it.parameterTypes.size == 1 && it.parameterTypes[0].isInterface
+            } == true
 
     fun isSubscribe(method: Method): Boolean {
         val parameters = method.parameterTypes

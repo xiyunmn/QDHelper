@@ -33,7 +33,7 @@ internal class SettingsPresentationCatalog(contributions: List<SettingsContribut
         page("interface", "界面定制", "home", "开屏 · 书架 · 导航 · 页面")
         page("content", "内容工具", "home", "屏蔽 · 图片 · 卡牌 · 导出")
         page("account", "账号与自动化", "home", "签到 · 投资 · 时长 · 福利")
-        page("privacy", "弹窗与标识", "home", "弹窗 · 标识 · DNS · 上报")
+        page("privacy", "弹窗与上报", "home", "弹窗 · DNS · 上报")
         page("tools", "工具与诊断", "home", "解析 · 指纹 · 日志 · 配置")
         page("reader-clean", "阅读界面", "reading", ids = "reader.watermark reader.chapter-end reader.last-page reader.toolbar-ad")
         page("copy", "复制与分享", "reading", ids = "reader.body-copy reader.paragraph-action-order reader.free-copy reader.free-copy-mode reader.share-limit")
@@ -63,7 +63,6 @@ internal class SettingsPresentationCatalog(contributions: List<SettingsContribut
         page("read-time", "阅读时长", "account", ids = "read_time.multiplier.enabled read_time.multiplier.value read_time.local_display.real read_time.report_audit read_time.cloud_probe read_time.hint")
         page("welfare", "福利中心", "account", ids = "welfare.reward-ad welfare.combo-reward welfare.reward-popup")
         page("reports", "启动与设备上报", "privacy", ids = "startup.report startup.device-track startup.fock-report startup.download-game")
-        page("identity", "设备与账号标识", "privacy", ids = "network-identity.multibox-shield network-identity.qimei-enabled network-identity.qimei network-identity.qimei36 network-identity.guid-enabled network-identity.guid")
         page("dns", "DNS", "privacy", ids = "network-identity.dns-enabled network-identity.dns-stack network-identity.dns-rules")
         page("dialogs", "弹窗与引导", "privacy", ids = "dialogs.privacy-update dialogs.update-check dialogs.notification-permission dialogs.teenager-entry")
         page("resolver", "解析与运行信息", "tools", ids = "diagnostics.resolver-status")
@@ -123,9 +122,8 @@ internal class SettingsPresentationCatalog(contributions: List<SettingsContribut
     }
 
     private fun riskFor(id: String) = when {
-        id == "account.auto-invest" || id.startsWith("read_time.multiplier") || id.startsWith("network-identity.guid") -> SettingRisk.HighRisk
-        id == "book-shield.allow-empty" || id.startsWith("network-identity.qimei") -> SettingRisk.Attention
-        id in setOf("welfare.combo-reward") -> SettingRisk.Experimental
+        id == "account.auto-invest" || id.startsWith("read_time.multiplier") -> SettingRisk.HighRisk
+        id == "book-shield.allow-empty" -> SettingRisk.Attention
         id.startsWith("diagnostics.") || id in setOf("book-shield.trace", "welfare.reward-probe") -> SettingRisk.Diagnostic
         else -> SettingRisk.Normal
     }
@@ -141,8 +139,6 @@ internal class SettingsPresentationCatalog(contributions: List<SettingsContribut
                 if (place in setOf("main", "detail", "directory") && !id.endsWith(".enabled")) add(requires("glass-bars.$place.enabled", "对应位置底栏"))
             }
             id in setOf("network-identity.dns-stack", "network-identity.dns-rules") -> listOf(requires("network-identity.dns-enabled", "自定义 DNS"))
-            id in setOf("network-identity.qimei", "network-identity.qimei36") -> listOf(requires("network-identity.qimei-enabled", "自定义 QIMEI"))
-            id == "network-identity.guid" -> listOf(requires("network-identity.guid-enabled", "自定义 GUID"))
             id == "reader.free-copy-mode" -> listOf(requires("reader.free-copy", "自由复制"))
             id == "read_time.multiplier.value" -> listOf(requires("read_time.multiplier.enabled", "阅读时长倍率"))
             else -> emptyList()

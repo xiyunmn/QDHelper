@@ -424,12 +424,10 @@ object DeviceIdentityProbeFeature : InstallableFeature {
                 ?: return@runCatching null
             FeatureHooks.invoke(method, companionInstance(companion))
         }.getOrNull()
-        val customQimei = SettingsRuntime.isCustomQimeiEnabled(context)
-        val customGuid = SettingsRuntime.isCustomGuidEnabled(context)
         val startupReportBlock = SettingsRuntime.isStartupReportBlockEnabled(context)
         val trackBlock = SettingsRuntime.isTrackDeviceInfoBlockEnabled(context)
         val fockBlock = SettingsRuntime.isFockReportBlockEnabled(context)
-        val experimentValid = !customQimei && !customGuid && !startupReportBlock && !trackBlock && !fockBlock
+        val experimentValid = !startupReportBlock && !trackBlock && !fockBlock
 
         FeatureHooks.i(
             "Device snapshot#$count reason=$reason, " +
@@ -437,7 +435,6 @@ object DeviceIdentityProbeFeature : InstallableFeature {
                 "q16_fp=${fp(q16)}, q36_fp=${fp(q36)}, oid_fp=${fp(oaid)}, " +
                 "freshman=$freshman, limitFree=$limitFree, " +
                 "moduleEnabled=${SettingsRuntime.isModuleEnabled(context)}, " +
-                "customQimei=$customQimei, customGuid=$customGuid, " +
                 "startupReportBlock=$startupReportBlock, trackBlock=$trackBlock, fockBlock=$fockBlock, " +
                 "experimentValid=$experimentValid, configContext=${DeviceIdentityEvidenceProbe.configContextTag()}",
         )

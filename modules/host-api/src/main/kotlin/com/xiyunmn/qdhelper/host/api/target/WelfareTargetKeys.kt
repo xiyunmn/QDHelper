@@ -15,6 +15,7 @@ object WelfareTargetKeys {
     val qqMiniLoadAd = many("welfare.qqmini.reward.load_ad", "Verified QQ mini-app reward load entry points.")
     val qqMiniShowAd = many("welfare.qqmini.reward.show_ad", "Verified QQ mini-app reward show entry points.")
 
+    val nativeAdSource = one("welfare.native.reward_source")
     val nativeClaimBridge = one("welfare.recovery.native_bridge")
     val groupedClaimBridge = one("welfare.recovery.grouped_bridge")
     val nativeClaimEvent = one("welfare.recovery.native_event")
@@ -46,6 +47,7 @@ object WelfareTargetKeys {
         flutterMethodCall,
         flutterShowGdtAd,
         gdtRewardObservable,
+        nativeAdSource,
         tangramRewardShowAd,
         h5RewardConfigMid,
         h5RewardConfigLast,

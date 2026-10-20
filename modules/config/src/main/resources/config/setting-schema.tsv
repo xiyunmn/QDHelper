@@ -120,14 +120,6 @@ feature.welfare.reward_popup.suppress_enabled	BOOLEAN	false	USER
 feature.network.custom_dns.enabled	BOOLEAN	false	USER
 feature.network.custom_dns.net_stack	STRING	3	USER
 feature.network.custom_dns.rules	STRING		USER
-feature.identity.custom_qimei.enabled	BOOLEAN	false	USER
-feature.identity.custom_qimei.value	STRING		USER
-feature.identity.custom_qimei36.value	STRING		USER
-feature.identity.custom_guid.enabled	BOOLEAN	false	USER
-feature.identity.custom_guid.value	STRING		USER
-feature.identity.multibox_report_shield.enabled	BOOLEAN	false	USER
-runtime.identity.custom_qimei.last_synced	STRING		RUNTIME
-runtime.identity.custom_qimei36.last_synced	STRING		RUNTIME
 feature.shield.book.enabled	BOOLEAN	false	USER
 feature.shield.book.quick_add	BOOLEAN	false	USER
 feature.shield.book.locations	STRING	selection_morphing,flutter_book_stream,daily_reading_flutter,bookstore_reborn,ranking,read_last_page_read_more,read_last_page_similar_book,read_last_page_recommend,read_last_page_recommend_by_tag	USER

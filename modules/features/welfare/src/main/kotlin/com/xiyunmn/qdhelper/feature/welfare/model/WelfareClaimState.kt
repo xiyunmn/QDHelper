@@ -44,6 +44,10 @@ internal class WelfareClaimState(
     }
 
     @Synchronized
+    fun hasConfirmedReward(): Boolean = results.values.any { it == WelfareClaimOutcome.REWARDED } &&
+        results.values.all { it == WelfareClaimOutcome.REWARDED || it == WelfareClaimOutcome.EMPTY }
+
+    @Synchronized
     fun endStream(): Boolean {
         if (cancelled || finished || streamEnded) return false
         streamEnded = true

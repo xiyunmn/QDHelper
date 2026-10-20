@@ -8,7 +8,7 @@ internal fun welfareRewardPopupScript(enabled: Boolean): String = """
         if (previous) previous.dispose();
         return 'disabled';
       }
-      if (location.hostname.toLowerCase() !== 'h5.if.qidian.com' ||
+      if (['h5.if.qidian.com', 'brave.if.qidian.com'].indexOf(location.hostname.toLowerCase()) < 0 ||
           location.pathname.replace(/\/${'$'}/, '').toLowerCase() !== '/new/welfarecenter') return 'outside-page';
       if (previous) { previous.sweep(); return 'active:closed=' + previous.closed; }
       if (!document.documentElement) return 'not-ready';
@@ -22,7 +22,7 @@ internal fun welfareRewardPopupScript(enabled: Boolean): String = """
       (document.head || document.documentElement).appendChild(style);
       function sweep() {
         if (state.disposed) return;
-        if (location.hostname.toLowerCase() !== 'h5.if.qidian.com' ||
+        if (['h5.if.qidian.com', 'brave.if.qidian.com'].indexOf(location.hostname.toLowerCase()) < 0 ||
             location.pathname.replace(/\/${'$'}/, '').toLowerCase() !== '/new/welfarecenter') { state.dispose(); return; }
         document.querySelectorAll('.prize-dialog').forEach(function(popup) {
           var content = popup.querySelector('[data-popup-visible]');

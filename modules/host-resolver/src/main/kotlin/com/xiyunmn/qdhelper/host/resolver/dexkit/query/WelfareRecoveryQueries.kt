@@ -5,6 +5,31 @@ import com.xiyunmn.qdhelper.host.api.target.WelfareTargetKeys
 import org.luckypray.dexkit.query.enums.StringMatchType
 
 internal object WelfareRecoveryQueries {
+    val nativeAdSource = DexKitMethodQuery(
+        id = WelfareTargetKeys.nativeAdSource.id.value,
+        purpose = "native reward platform selection after risk verification",
+        query = {
+            searchPackages("com.qidian.QDReader.extras")
+            matcher {
+                paramTypes("java.util.concurrent.atomic.AtomicReference", Classes.REWARD_VIDEO_CONFIG,
+                    "android.app.Activity", "java.lang.String", "java.lang.String", "org.json.JSONObject",
+                    Classes.UNIVERSAL_VERIFY_HELPER)
+                invokeMethods {
+                    add { declaredClass(Classes.REWARD_VIDEO_CONFIG); name("getAdPlatform"); paramCount(0); returnType("int") }
+                }
+            }
+        },
+        verify = { method ->
+            java.lang.reflect.Modifier.isStatic(method.modifiers) &&
+                method.declaringClass.name.startsWith("com.qidian.QDReader.extras.") &&
+                method.parameterTypes.map { it.name } == listOf(
+                    "java.util.concurrent.atomic.AtomicReference", Classes.REWARD_VIDEO_CONFIG,
+                    "android.app.Activity", "java.lang.String", "java.lang.String", "org.json.JSONObject",
+                    Classes.UNIVERSAL_VERIFY_HELPER) &&
+                WelfareRecoveryContracts.isObservableSource(method.returnType)
+        },
+    )
+
     val nativeBridge = DexKitMethodQuery(
         id = WelfareTargetKeys.nativeClaimBridge.id.value,
         purpose = "native welfare claim bridge with captured page callback",
@@ -65,8 +90,10 @@ internal object WelfareRecoveryQueries {
             }
         },
         verify = {
-            it.declaringClass.name == Classes.WEBVIEW_PLUGIN && it.returnType == Void.TYPE &&
-                it.parameterTypes.map { type -> type.name } == listOf("java.lang.String", "org.json.JSONObject", "int")
+            it.returnType == Void.TYPE &&
+                !java.lang.reflect.Modifier.isStatic(it.modifiers) &&
+                it.parameterTypes.map { type -> type.name } == listOf("java.lang.String", "org.json.JSONObject", "int") &&
+                HostInfrastructureContracts.isWebViewPlugin(it.declaringClass)
         },
     )
     val rxSubscribe = DexKitMethodQuery(

@@ -87,7 +87,6 @@ internal object DeviceConfigEvidenceProbe {
     }
 
     private fun hookConfigRequest(module: HookModule, classLoader: ClassLoader, phase: String): Int {
-        val clazz = FeatureHooks.findClassOrNull(HostSymbols.Classes.CONFIG_LOADER, classLoader) ?: return 0
         val method = resolveOne(classLoader, DiagnosticsTargetKeys.configLoaderRequest) ?: run {
             FeatureHooks.w("Device config evidence: request entry unresolved, phase=$phase")
             return 0
@@ -131,7 +130,6 @@ internal object DeviceConfigEvidenceProbe {
     }
 
     private fun hookConfigApply(module: HookModule, classLoader: ClassLoader, phase: String): Int {
-        val clazz = FeatureHooks.findClassOrNull(HostSymbols.Classes.CONFIG_LOADER, classLoader) ?: return 0
         val method = resolveOne(classLoader, DiagnosticsTargetKeys.configLoaderApply) ?: run {
             FeatureHooks.w("Device config evidence: response apply unresolved, phase=$phase")
             return 0
@@ -402,21 +400,6 @@ internal object DeviceConfigEvidenceProbe {
             annotation.annotationClass.java.getMethod("value").invoke(annotation)?.toString()
         }.getOrNull()?.equals(GETCONF_PATH, ignoreCase = true) == true
     }
-
-    private fun isConfigRequestMethod(method: Method): Boolean =
-        method.declaringClass.name == HostSymbols.Classes.CONFIG_LOADER &&
-            !Modifier.isStatic(method.modifiers) &&
-            method.parameterTypes.size == 1 &&
-            method.parameterTypes[0].isInterface &&
-            method.returnType == Void.TYPE
-
-    private fun isConfigApplyMethod(method: Method): Boolean =
-        method.declaringClass.name == HostSymbols.Classes.CONFIG_LOADER &&
-            !Modifier.isStatic(method.modifiers) &&
-            method.parameterTypes.size == 2 &&
-            method.parameterTypes[0] == String::class.java &&
-            method.parameterTypes[1].isInterface &&
-            method.returnType == Void.TYPE
 
     private fun traceFor(loader: Any?): String {
         val active = configContext.get()?.substringAfterLast(':')

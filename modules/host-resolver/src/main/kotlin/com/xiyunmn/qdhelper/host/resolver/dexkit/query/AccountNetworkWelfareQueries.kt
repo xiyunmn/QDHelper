@@ -11,24 +11,6 @@ internal object AccountNetworkWelfareQueries {
     private const val REWARD_VIDEO_CONFIG_CLASS =
         "com.qidian.QDReader.repository.entity.config.RewardVideoConfig"
 
-    val identityYwGuidGetter = DexKitMethodQuery(
-        id = "identity.account.yw_guid_getter",
-        purpose = "account ywGuid getter (DeviceInfo.Guid / request sign source)",
-        query = {
-            searchPackages("com.qidian.QDReader.component.user")
-            matcher {
-                paramCount(0)
-                returnType(String::class.java)
-                addUsingString("SettingYWGuid", StringMatchType.Equals)
-            }
-        },
-        verify = { method ->
-            method.declaringClass.name == HostSymbols.Classes.QD_USER_MANAGER &&
-                method.parameterTypes.isEmpty() &&
-                method.returnType == String::class.java
-        },
-    )
-
     /**
      * Host auto-update entry class (h/i/m/n/o), which carries the "发现新版本" popup. Its obfuscated
      * short name drifts inside the active interval, so anchor it version-independently by an
@@ -301,7 +283,8 @@ internal object AccountNetworkWelfareQueries {
     val h5RewardBridgeConfigMid = h5RewardBridgeQuery(
         id = "welfare.h5.reward_bridge.f1_config_mid",
         purpose = "H5 reward bridge f1_config_mid (name-independent)",
-        paramCount = 5,
+        parameters = listOf("int", "java.lang.String", REWARD_VIDEO_CONFIG_CLASS, "java.lang.String", "java.lang.String"),
+        resultType = "void",
     ) { method ->
         method.returnType == Void.TYPE &&
             method.parameterTypes[2].name == REWARD_VIDEO_CONFIG_CLASS
@@ -311,7 +294,8 @@ internal object AccountNetworkWelfareQueries {
     val h5RewardBridgeConfigLast = h5RewardBridgeQuery(
         id = "welfare.h5.reward_bridge.f1_config_last",
         purpose = "H5 reward bridge f1_config_last (name-independent)",
-        paramCount = 5,
+        parameters = listOf("int", "java.lang.String", "java.lang.String", "java.lang.String", REWARD_VIDEO_CONFIG_CLASS),
+        resultType = "void",
     ) { method ->
         method.returnType == Void.TYPE &&
             method.parameterTypes.last().name == REWARD_VIDEO_CONFIG_CLASS
@@ -321,7 +305,8 @@ internal object AccountNetworkWelfareQueries {
     val h5RewardBridgeGame = h5RewardBridgeQuery(
         id = "welfare.h5.reward_bridge.r1_game",
         purpose = "H5 reward bridge r1_game (name-independent)",
-        paramCount = 3,
+        parameters = listOf("android.app.Activity", "org.json.JSONObject", "int"),
+        resultType = "int",
     ) { method ->
         method.returnType == Int::class.javaPrimitiveType &&
             Activity::class.java.isAssignableFrom(method.parameterTypes[0]) &&
@@ -330,16 +315,16 @@ internal object AccountNetworkWelfareQueries {
     }
 
     // Name-independent: the host obfuscates the method letter across releases.
-    // 7.9.476 inserts RewardVideoConfig before Pair, so accept the audited 6/7-arg variants and
-    // enforce the complete ordered signature in the verifier.
+    // The stable event log identifies the business handler before reflection; ordered
+    // verification accepts the earlier 6/7-argument and 7.9.482 9-argument variants.
     val welfareFinishWatchBusiness = DexKitMethodQuery(
         id = "welfare.extra.finish_watch_business",
         purpose = "welfare finishWatch business method (name-independent)",
         query = {
             searchPackages("com.qidian.QDReader.extras")
             matcher {
-                addAnyOf { paramCount(6) }
-                addAnyOf { paramCount(7) }
+                returnType("void")
+                addUsingString("upload passthrough gradientLevel: ", StringMatchType.Contains)
             }
         },
         verify = HostMethodContracts::isWelfareFinishWatchBusiness,

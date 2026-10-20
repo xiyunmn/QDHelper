@@ -165,8 +165,10 @@ private class WelfareClaimRuntime(private val host: WelfareRecoveryHost) : AutoC
 
     private fun groupedError(chain: HookChain): Any? {
         val request = groupedRequest(chain) ?: return chain.proceed()
-        // The host may synchronously award its default reward inside the ad-error handler.
-        return business(chain, request, WelfareClaimLeg.DEFAULT_REWARD, async = false)
+        val error = chain.args.lastOrNull() as? Throwable ?: return chain.proceed()
+        // The default claim remains synchronous, but newer hosts return an error/recovery stream.
+        return business(chain, request, WelfareClaimLeg.DEFAULT_REWARD, async = false,
+            suppressed = { host.suppressedGroupedError(error) })
     }
 
     private fun business(
@@ -174,10 +176,11 @@ private class WelfareClaimRuntime(private val host: WelfareRecoveryHost) : AutoC
         request: WelfareRecoveryRequest,
         leg: WelfareClaimLeg,
         async: Boolean,
+        suppressed: () -> Any? = { null },
     ): Any? {
         if (!request.state.beginClaim(leg)) {
             pages.trace(request, "duplicate_or_stale_claim_event_dropped")
-            return null
+            return suppressed()
         }
         pages.trace(request, "claim_begin_$leg")
         pages.claimStarted(request)
@@ -232,10 +235,18 @@ private class WelfareClaimRuntime(private val host: WelfareRecoveryHost) : AutoC
 
     private fun streamResult(request: WelfareRecoveryRequest, error: Boolean, value: Any?, proceed: () -> Unit) {
         val native = request.state.path == WelfareClaimPath.NATIVE
-        val empty = native && (value as? List<*>)?.isEmpty() == true
-        val closed = error || native || (value as? Pair<*, *>)?.first == 8
+        val rewardList = value as? List<*>
+        val empty = rewardList?.isEmpty() == true
+        // New grouped streams return their accumulated reward list, not a Pair close event.
+        val closed = error || native || rewardList != null || (value as? Pair<*, *>)?.first == 8
         if (closed && !request.state.endStream()) {
             pages.trace(request, "duplicate_or_stale_stream_terminal_dropped")
+            return
+        }
+        if (error && request.state.hasConfirmedReward()) {
+            // A late ad error must not overwrite an already confirmed server reward with a toast.
+            request.state.requireRecovery()
+            pages.changed(request, "confirmed_reward_late_ad_error")
             return
         }
         try {

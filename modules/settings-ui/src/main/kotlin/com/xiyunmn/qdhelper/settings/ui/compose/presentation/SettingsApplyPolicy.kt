@@ -18,8 +18,8 @@ internal object SettingsApplyPolicy {
     private val welfareActions = listOf(SettingIds.KEY_WELFARE_REWARD_AD_SKIP_ENABLED, SettingIds.KEY_WELFARE_COMBO_REWARD_SKIP_ENABLED, SettingIds.KEY_WELFARE_REWARD_POPUP_SUPPRESS_ENABLED)
     private val conditionalInstall = welfareActions + listOf(
         SettingIds.KEY_AUTO_SIGN_IN_ENABLED, SettingIds.KEY_AUTO_INVEST_ENABLED,
-        SettingIds.KEY_CUSTOM_DNS_ENABLED, SettingIds.KEY_CUSTOM_QIMEI_ENABLED, SettingIds.KEY_CUSTOM_GUID_ENABLED,
-        SettingIds.KEY_MULTIBOX_REPORT_SHIELD_ENABLED, SettingIds.KEY_DEBUG_DISCOVERY_ENABLED,
+        SettingIds.KEY_CUSTOM_DNS_ENABLED,
+        SettingIds.KEY_DEBUG_DISCOVERY_ENABLED,
         SettingIds.KEY_DEBUG_CALL_PROBE_ENABLED, SettingIds.KEY_DEBUG_DEVICE_IDENTITY_PROBE_ENABLED,
         SettingIds.KEY_DEBUG_WELFARE_REWARD_PROBE_ENABLED, SettingIds.KEY_DETAILED_LOG_ENABLED,
     )

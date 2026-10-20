@@ -221,7 +221,8 @@ internal fun String?.isWelfareCenterUrl(): Boolean {
     if (text.isEmpty()) return false
     return runCatching {
         val uri = Uri.parse(text)
-        uri.host.equals("h5.if.qidian.com", ignoreCase = true) &&
+        (uri.host.equals("h5.if.qidian.com", ignoreCase = true) ||
+            uri.host.equals("brave.if.qidian.com", ignoreCase = true)) &&
             uri.path.orEmpty().trimEnd('/').equals("/new/welfarecenter", ignoreCase = true)
     }.getOrDefault(false)
 }

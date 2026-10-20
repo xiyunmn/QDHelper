@@ -56,18 +56,17 @@ internal object DeviceIdentityProbeQueries {
         query = {
             searchPackages("com.qidian.QDReader.component.config")
             matcher {
-                declaredClass(HostSymbols.Classes.CONFIG_LOADER)
                 paramCount(1)
                 returnType(Void.TYPE)
                 addUsingString("ConfigLoader", StringMatchType.Equals)
             }
         },
         verify = { method ->
-            method.declaringClass.name == HostSymbols.Classes.CONFIG_LOADER &&
-                !Modifier.isStatic(method.modifiers) &&
+            !Modifier.isStatic(method.modifiers) &&
                 method.parameterTypes.size == 1 &&
                 method.parameterTypes[0].isInterface &&
-                method.returnType == Void.TYPE
+                method.returnType == Void.TYPE &&
+                HostInfrastructureContracts.isConfigLoader(method.declaringClass)
         },
     )
 
@@ -77,18 +76,17 @@ internal object DeviceIdentityProbeQueries {
         query = {
             searchPackages("com.qidian.QDReader.component.config")
             matcher {
-                declaredClass(HostSymbols.Classes.CONFIG_LOADER)
                 paramCount(2)
                 returnType(Void.TYPE)
             }
         },
         verify = { method ->
-            method.declaringClass.name == HostSymbols.Classes.CONFIG_LOADER &&
-                !Modifier.isStatic(method.modifiers) &&
+            !Modifier.isStatic(method.modifiers) &&
                 method.parameterTypes.size == 2 &&
                 method.parameterTypes[0] == String::class.java &&
                 method.parameterTypes[1].isInterface &&
-                method.returnType == Void.TYPE
+                method.returnType == Void.TYPE &&
+                HostInfrastructureContracts.isConfigLoader(method.declaringClass)
         },
     )
 

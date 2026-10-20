@@ -206,19 +206,20 @@ internal fun appConfigStageQuery(
 internal fun h5RewardBridgeQuery(
     id: String,
     purpose: String,
-    paramCount: Int,
+    parameters: List<String>,
+    resultType: String,
     verifyExtra: (Method) -> Boolean,
 ) = DexKitMethodQuery(
     id = id,
     purpose = purpose,
     query = {
         searchPackages("com.qidian.QDReader.webview.plugins")
-        matcher { paramCount(paramCount) }
+        matcher { paramTypes(*parameters.toTypedArray()); returnType(resultType) }
     },
     verify = { method ->
-        method.declaringClass.hasSuperclass(HostSymbols.Classes.WEBVIEW_PLUGIN) &&
-            method.parameterTypes.size == paramCount &&
-            verifyExtra(method)
+        !Modifier.isStatic(method.modifiers) &&
+            method.parameterTypes.map { it.name } == parameters && verifyExtra(method) &&
+            HostInfrastructureContracts.extendsWebViewPlugin(method.declaringClass)
     },
 )
 

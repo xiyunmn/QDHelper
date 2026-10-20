@@ -149,6 +149,7 @@ object HostTargetCatalog {
     }
 
     private fun revisionOf(id: String): Int = when (id) {
+        in REVISION_10_TARGET_IDS -> 10
         in REVISION_9_TARGET_IDS -> 9
         in REVISION_8_TARGET_IDS -> 8
         in REVISION_7_TARGET_IDS -> 7
@@ -159,6 +160,23 @@ object HostTargetCatalog {
         in REVISION_2_TARGET_IDS -> 2
         else -> 1
     }
+
+    // Invalidate stale misses after infrastructure renaming and welfare stream changes.
+    private val REVISION_10_TARGET_IDS = setOf(
+        "welfare.h5.reward_bridge.f1_config_mid",
+        "welfare.h5.reward_bridge.f1_config_last",
+        "welfare.h5.reward_bridge.r1_game",
+        "welfare.extra.finish_watch_business",
+        "welfare.recovery.native_bridge",
+        "welfare.recovery.grouped_bridge",
+        "welfare.recovery.grouped_event",
+        "welfare.recovery.grouped_error",
+        "welfare.recovery.h5_callback",
+        "debug.device_identity_probe.config_loader_request",
+        "debug.device_identity_probe.config_loader_apply",
+        "debug.device_identity_probe.app_config_cache_loaded",
+        "debug.device_identity_probe.app_config_network_updated",
+    )
 
     // Push the existing getter owner contract into native matching before reflection.
     private val REVISION_9_TARGET_IDS = setOf(

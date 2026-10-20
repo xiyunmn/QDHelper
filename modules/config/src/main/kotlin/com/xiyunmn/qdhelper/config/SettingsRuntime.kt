@@ -408,46 +408,6 @@ object SettingsRuntime {
             ?: 3
     }
 
-    fun isCustomQimeiEnabled(context: Context? = null): Boolean {
-        return featureEnabled(context, SettingIds.KEY_CUSTOM_QIMEI_ENABLED)
-    }
-
-    fun customQimei(context: Context? = null): String {
-        return prefsOrNull(context)?.getString(SettingIds.KEY_CUSTOM_QIMEI_VALUE, "")?.trim().orEmpty()
-    }
-
-    fun customQimei36(context: Context? = null): String {
-        return prefsOrNull(context)?.getString(SettingIds.KEY_CUSTOM_QIMEI36_VALUE, "")?.trim().orEmpty()
-    }
-
-    fun isCustomGuidEnabled(context: Context? = null): Boolean {
-        return featureEnabled(context, SettingIds.KEY_CUSTOM_GUID_ENABLED)
-    }
-
-    fun isAnyNetworkIdentityEnabled(context: Context? = null): Boolean =
-        isCustomDnsEnabled(context) || isCustomQimeiEnabled(context) || isCustomGuidEnabled(context) ||
-            isMultiBoxReportShieldEnabled(context)
-    fun customGuid(context: Context? = null): String {
-        return prefsOrNull(context)?.getString(SettingIds.KEY_CUSTOM_GUID_VALUE, "")?.trim().orEmpty()
-    }
-
-    fun lastSyncedCustomQimei(context: Context? = null): String {
-        context?.let(ConfigRuntime::initialize)
-        return ConfigRuntime.readString(SettingIds.KEY_CUSTOM_QIMEI_LAST_SYNCED)
-    }
-
-    fun lastSyncedCustomQimei36(context: Context? = null): String {
-        context?.let(ConfigRuntime::initialize)
-        return ConfigRuntime.readString(SettingIds.KEY_CUSTOM_QIMEI36_LAST_SYNCED)
-    }
-
-    fun markSyncedCustomQimei(context: Context, qimei: String, qimei36: String): Boolean {
-        ConfigRuntime.initialize(context)
-        return ConfigRuntime.putRuntimeValues(
-            mapOf(SettingIds.KEY_CUSTOM_QIMEI_LAST_SYNCED to qimei, SettingIds.KEY_CUSTOM_QIMEI36_LAST_SYNCED to qimei36),
-        )
-    }
-
     fun isBookShieldEnabled(context: Context? = null): Boolean {
         return featureEnabled(context, SettingIds.KEY_BOOK_SHIELD_ENABLED)
     }
@@ -501,10 +461,6 @@ object SettingsRuntime {
 
     fun isHostCollectJsonEnabled(context: Context? = null): Boolean {
         return isDetailedLogEnabled(context) && featureEnabled(context, SettingIds.KEY_DEBUG_HOST_COLLECT_JSON_ENABLED)
-    }
-
-    fun isMultiBoxReportShieldEnabled(context: Context? = null): Boolean {
-        return featureEnabled(context, SettingIds.KEY_MULTIBOX_REPORT_SHIELD_ENABLED)
     }
 
     fun isDetailedLogEnabled(context: Context? = null): Boolean =

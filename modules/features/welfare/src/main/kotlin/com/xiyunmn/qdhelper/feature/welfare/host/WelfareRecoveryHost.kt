@@ -13,13 +13,22 @@ import com.xiyunmn.qdhelper.host.api.target.HostTargetResolver
 import com.xiyunmn.qdhelper.host.api.target.TargetKey
 import com.xiyunmn.qdhelper.host.api.target.WelfareTargetKeys
 import java.lang.reflect.Method
+import java.lang.reflect.Modifier
 
-internal class WelfareRecoveryHost private constructor(private val methods: Map<TargetKey.MethodTarget, Method>) {
+internal class WelfareRecoveryHost private constructor(
+    private val methods: Map<TargetKey.MethodTarget, Method>,
+    private val groupedErrorFactory: Method?,
+) {
     private val web = WelfareWebViewHost(methods)
     operator fun get(key: TargetKey.MethodTarget): Method = methods.getValue(key)
 
     fun value(key: TargetKey.MethodTarget, receiver: Any?, vararg args: Any?): Any? =
         (FeatureHooks.invokeResult(get(key), receiver, *args) as? HostAccess.Value)?.value
+
+    /** Preserve ObservableSource on suppressed 7.9.482 error events; never return null to Rx. */
+    fun suppressedGroupedError(error: Throwable): Any? = groupedErrorFactory?.let {
+        requireNotNull(FeatureHooks.invoke(it, null, error))
+    }
 
     fun webView(fragment: Any?): View? = web.webView(fragment)
     fun isWebView(view: View): Boolean = web.isWebView(view)
@@ -67,7 +76,17 @@ internal class WelfareRecoveryHost private constructor(private val methods: Map<
                 FeatureHooks.w("Welfare recovery unavailable: resolved=${resolved.size}/${keys.size}")
                 return null
             }
-            return WelfareRecoveryHost(resolved)
+            val errorReturn = resolved.getValue(WelfareTargetKeys.groupedClaimError).returnType
+            val errorFactory = if (errorReturn == Void.TYPE) null else {
+                val observable = resolved.getValue(WelfareTargetKeys.rxSubscribe).declaringClass
+                FeatureHooks.findDeclaredMethodOrNull(observable, "error", Throwable::class.java)
+                    ?.takeIf { Modifier.isStatic(it.modifiers) && errorReturn.isAssignableFrom(it.returnType) }
+                    ?: run {
+                        FeatureHooks.w("Welfare recovery unavailable: error stream factory missing")
+                        return null
+                    }
+            }
+            return WelfareRecoveryHost(resolved, errorFactory)
         }
     }
 }

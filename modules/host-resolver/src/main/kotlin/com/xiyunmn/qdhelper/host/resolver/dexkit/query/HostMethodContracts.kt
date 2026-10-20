@@ -123,7 +123,7 @@ internal object HostMethodContracts {
 
     /**
      * The AppConfig cache/network stage callbacks are declared on an anonymous subclass of the
-     * config loader (`AppConfig$init$1$1 extends judian<AppConfigBean>`). Anonymous class names are
+     * config loader. Both the loader and anonymous class names are
      * compiler-synthesized and reorder freely between builds, so the contract anchors on the
      * *inheritance* relation plus the concrete parameter type instead of the synthetic FQCN.
      *
@@ -132,7 +132,6 @@ internal object HostMethodContracts {
      */
     fun isAppConfigStage(
         method: Method,
-        configLoaderName: String = HostSymbols.Classes.CONFIG_LOADER,
         appConfigBeanName: String = HostSymbols.Classes.APP_CONFIG_BEAN,
     ): Boolean =
         !Modifier.isStatic(method.modifiers) &&
@@ -141,17 +140,8 @@ internal object HostMethodContracts {
             method.parameterTypes.size == 1 &&
             method.parameterTypes[0].name == appConfigBeanName &&
             method.returnType == Void.TYPE &&
-            method.declaringClass.isDeclaredUnder(configLoaderName)
-
-    /** True when [this] is [ancestorName] itself or any subclass of it. */
-    private fun Class<*>.isDeclaredUnder(ancestorName: String): Boolean {
-        var current: Class<*>? = this
-        while (current != null && current != Any::class.java) {
-            if (current.name == ancestorName) return true
-            current = current.superclass
-        }
-        return false
-    }
+            generateSequence(method.declaringClass.superclass) { it.superclass }
+                .any(HostInfrastructureContracts::isConfigLoader)
 
     /**
      * The reading-time DAO insert: `public boolean(ReadTimeEntity)`.
@@ -309,16 +299,19 @@ internal object HostMethodContracts {
         val ownerMatches = method.declaringClass.name == ownerName ||
             method.declaringClass.name.startsWith(ownerPackagePrefix)
         if (!ownerMatches || !Modifier.isStatic(method.modifiers) ||
-            method.returnType != Void.TYPE || params.size !in 6..7 ||
-            !isWelfareDialog(params[0], dialogName) ||
-            params[1].name != "java.util.concurrent.atomic.AtomicInteger" ||
-            params[2] != Int::class.javaPrimitiveType ||
-            params[3].name != "java.util.concurrent.atomic.AtomicReference" ||
-            params[4].name != verifierName || params.last().name != "android.util.Pair"
+            method.returnType != Void.TYPE || params.size !in setOf(6, 7, 9) ||
+            !isWelfareDialog(params[0], dialogName)
         ) {
             return false
         }
-        return params.size == 6 || params[5].name == rewardConfigName
+        val atomicInt = "java.util.concurrent.atomic.AtomicInteger"
+        val ref = "java.util.concurrent.atomic.AtomicReference"
+        val oldTail = listOf(atomicInt, "int", ref, verifierName)
+        return params.drop(1).map { it.name } in listOf(
+            oldTail + "android.util.Pair",
+            oldTail + listOf(rewardConfigName, "android.util.Pair"),
+            listOf(atomicInt, atomicInt, "int", ref, verifierName, ref, rewardConfigName, "android.util.Pair"),
+        )
     }
 
     private fun isNotificationPermissionCallback(type: Class<*>, ownerName: String): Boolean {

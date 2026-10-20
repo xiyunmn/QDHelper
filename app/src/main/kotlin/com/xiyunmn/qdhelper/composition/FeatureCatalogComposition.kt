@@ -11,7 +11,6 @@ import com.xiyunmn.qdhelper.host.api.target.CircleTargetKeys
 import com.xiyunmn.qdhelper.host.api.target.ContentToolsTargetKeys
 import com.xiyunmn.qdhelper.host.api.target.DialogTargetKeys
 import com.xiyunmn.qdhelper.host.api.target.NavigationTargetKeys
-import com.xiyunmn.qdhelper.host.api.target.NetworkIdentityTargetKeys
 import com.xiyunmn.qdhelper.host.api.target.PageCustomizationTargetKeys
 import com.xiyunmn.qdhelper.host.api.target.ReaderFontTargetKeys
 import com.xiyunmn.qdhelper.host.api.target.ReaderTargetKeys
@@ -34,7 +33,7 @@ import com.xiyunmn.qdhelper.feature.networkidentity.NetworkPrivacyFeature
 import com.xiyunmn.qdhelper.feature.reader.ReaderPrivacyFeature
 import com.xiyunmn.qdhelper.feature.startup.StartupPrivacyFeature
 import com.xiyunmn.qdhelper.feature.dialogs.DialogSuppressFeature
-import com.xiyunmn.qdhelper.feature.networkidentity.NetworkIdentityFeature
+import com.xiyunmn.qdhelper.feature.networkidentity.CustomDnsFeature
 import com.xiyunmn.qdhelper.feature.navigation.NavigationCustomizationFeature
 import com.xiyunmn.qdhelper.feature.glassbars.GlassBarsFeature
 import com.xiyunmn.qdhelper.feature.pagecustomization.PageCustomizationFeature
@@ -174,10 +173,9 @@ internal object FeatureCatalogComposition {
                 requiredTargets = ReaderFontTargetKeys.global.mapTo(linkedSetOf()) { it.id },
             ) { GlobalFontFeature },
             row(
-                "network-identity.core",
-                requiredTargets = NetworkIdentityTargetKeys.all.mapTo(linkedSetOf()) { it.id },
-                enabled = SettingsRuntime::isAnyNetworkIdentityEnabled,
-            ) { NetworkIdentityFeature },
+                "network-identity.dns",
+                enabled = SettingsRuntime::isCustomDnsEnabled,
+            ) { CustomDnsFeature },
             row(
                 "bookshelf.customization",
                 requiredTargets = (
@@ -272,9 +270,7 @@ internal object FeatureCatalogComposition {
 
 internal fun activeTargetOwners(context: Context?, featureIds: Iterable<String>): Set<OwnerId> {
     val owners = featureIds.mapTo(linkedSetOf()) { featureId -> featureId.substringBefore('.') }
-    if (!SettingsRuntime.isCustomDnsEnabled(context) && !SettingsRuntime.isCustomQimeiEnabled(context) &&
-        !SettingsRuntime.isCustomGuidEnabled(context)
-    ) {
+    if (!SettingsRuntime.isCustomDnsEnabled(context)) {
         owners -= "network-identity"
     }
     if (!SettingsRuntime.isAnyWelfareActionEnabled(context) && !SettingsRuntime.isWelfareRewardProbeEnabled(context)) {
