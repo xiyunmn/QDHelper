@@ -56,11 +56,7 @@ QDHelper 是面向起点读书的 LSPosed 功能增强模块，提供广告与�
 .\gradlew.bat :app:assembleRelease
 ```
 
-本地未配置签名时生成未签名 Release APK；Debug、Beta、Release 均启用 R8 和资源裁剪。正式签名通过环境变量 `RELEASE_KEYSTORE_FILE`、`KEYSTORE_PASSWORD`、`KEY_ALIAS`、`KEY_PASSWORD` 配置。
-
-推送触发的 CI 只上传一个已签名、压缩的 APK，名称为 `QDHelper-v1.0.0-<短哈希>.apk`；需配置对应的四项 GitHub Actions 签名 secrets（密钥文件使用 `KEYSTORE_BASE64`）。手动 `Build Release` 使用基础版本，产物为 `QDHelper-v1.0.0-release.apk`，不会自动发布 Release。
-
-CI 版本名为 `1.0.0.r<提交次数>.<短哈希>`。版本代号为 `100000 + 提交次数 × 2`，同一提交的手动正式版再加 1；克隆源码时保留完整 Git 历史。Manifest 与 Xposed 模块版本信息在构建时同步。
+未配置签名时生成未签名 APK。CI 在提交推送后仅提供一个签名 Release APK；Debug、Beta、Release 均启用压缩。
 
 ## 致谢
 
