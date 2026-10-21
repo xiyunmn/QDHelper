@@ -30,6 +30,7 @@ import java.util.concurrent.atomic.AtomicReference
 object AutoSignInFeature : InstallableFeature {
     override val name: String = "AutoSignInFeature"
 
+    private val membershipUnavailableReported = AtomicBoolean(false)
     private val pendingAttempts = ConcurrentHashMap.newKeySet<String>()
     private val activeSubscriptions = ConcurrentHashMap.newKeySet<Any>()
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -43,6 +44,7 @@ object AutoSignInFeature : InstallableFeature {
         FeatureResources.register("AutoSignInFeature") {
             mainHandler.removeCallbacksAndMessages(null)
             pendingAttempts.clear()
+            membershipUnavailableReported.set(false)
             activeSubscriptions.forEach(::disposeSubscription)
             activeSubscriptions.clear()
             synchronized(lifecycleSubscriptions) {
@@ -153,11 +155,15 @@ object AutoSignInFeature : InstallableFeature {
             ?: error("UserCheckInManager instance method not found")
         val manager = FeatureHooks.invoke(instanceMethod, null)
             ?: error("UserCheckInManager instance is null")
-        val membershipMethod = resolveHostMethod(classLoader, AccountTargetKeys.membershipAutoSignIn)
-            ?: error("Host membership auto-sign-in eligibility method not found")
-        val membershipEligible = FeatureHooks.invoke(membershipMethod, manager) as? Boolean
-            ?: error("Host membership auto-sign-in eligibility unavailable")
-        if (membershipEligible) {
+        val membershipEligible = runCatching {
+            resolveHostMethod(classLoader, AccountTargetKeys.membershipAutoSignIn)?.let { method ->
+                FeatureHooks.invoke(method, manager) as? Boolean
+            }
+        }.getOrNull()
+        if (membershipEligible == null && membershipUnavailableReported.compareAndSet(false, true)) {
+            FeatureHooks.w("Auto sign-in membership eligibility unavailable; continuing normal check-in")
+        }
+        if (membershipEligible == true) {
             pendingAttempts.remove(attemptKey)
             FeatureHooks.i("Auto sign-in skipped: host membership auto-sign-in eligible")
             return

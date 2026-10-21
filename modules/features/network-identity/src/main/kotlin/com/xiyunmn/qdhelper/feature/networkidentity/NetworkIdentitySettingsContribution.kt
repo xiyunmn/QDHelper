@@ -27,7 +27,7 @@ object NetworkIdentitySettingsContribution : SettingsContribution {
                     "3",
                     validator = { value -> value.trim() in setOf("1", "2", "3") },
                 ),
-                SettingsRow.TextInput("network-identity.dns-rules", "DNS 规则", "示例：qidian.com=1.2.3.4,5.6.7.8；空行和 # 注释会被忽略。", SettingIds.KEY_CUSTOM_DNS_RULES, "qidian.com=1.2.3.4", singleLine = false, keywords = setOf("dns规则", "HTTP DNS")),
+                SettingsRow.TextInput("network-identity.dns-rules", "DNS 规则", "仅接受数字 IPv4/IPv6；精确域名优先，其次最长父域名，同域名最后一条有效规则生效。示例：qidian.com=1.2.3.4；忽略空行和 # 注释。", SettingIds.KEY_CUSTOM_DNS_RULES, "qidian.com=1.2.3.4", singleLine = false, keywords = setOf("dns规则", "HTTP DNS")),
             ),
         ),
     )

@@ -8,7 +8,6 @@ import com.xiyunmn.qdhelper.config.SettingsRuntime
 import com.xiyunmn.qdhelper.feature.api.runtime.HookChain
 import com.xiyunmn.qdhelper.feature.api.runtime.HookModule
 import java.lang.reflect.Method
-import java.net.InetAddress
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 
@@ -55,10 +54,10 @@ object CustomDnsFeature : InstallableFeature {
             ?: return 0
         val method = findNoArgMethodOrReport(clazz, "getHttpDnsHosts", "network.dns.hosts", phase) ?: return 0
         return installAround(module, "network.dns.hosts", method, phase) { chain, installKey ->
-            val rules = DnsRules.parse(SettingsRuntime.customDnsRules(HostSessionStore.contextOrNull()))
-            if (!SettingsRuntime.isCustomDnsEnabled(HostSessionStore.contextOrNull()) || rules.isEmpty()) {
-                return@installAround chain.proceed()
-            }
+            val context = HostSessionStore.contextOrNull()
+            if (!SettingsRuntime.isCustomDnsEnabled(context)) return@installAround chain.proceed()
+            val rules = DnsRules.parse(SettingsRuntime.customDnsRules(context))
+            if (rules.isEmpty()) return@installAround chain.proceed()
             val original = chain.proceed() as? List<*> ?: emptyList<Any?>()
             val merged = (original.mapNotNull { it as? String } + rules.hosts()).distinct()
             logHit("network.dns.hosts", installKey, "return-custom-hosts")
@@ -98,12 +97,9 @@ object CustomDnsFeature : InstallableFeature {
         val method = findMethodOrReport(clazz, "lookup", id, phase, String::class.java) ?: return 0
         return installAround(module, id, method, phase) { chain, installKey ->
             val hostname = chain.args.getOrNull(0) as? String
-            val rules = DnsRules.parse(SettingsRuntime.customDnsRules(HostSessionStore.contextOrNull()))
-            val addresses = if (SettingsRuntime.isCustomDnsEnabled(HostSessionStore.contextOrNull())) {
-                rules.addressesFor(hostname)
-            } else {
-                emptyList()
-            }
+            val context = HostSessionStore.contextOrNull()
+            if (!SettingsRuntime.isCustomDnsEnabled(context)) return@installAround chain.proceed()
+            val addresses = DnsRules.parse(SettingsRuntime.customDnsRules(context)).addressesFor(hostname)
             if (addresses.isEmpty()) {
                 return@installAround chain.proceed()
             }
@@ -190,47 +186,4 @@ object CustomDnsFeature : InstallableFeature {
         return QDReaderHost.classLabel(declaringClass.name)
     }
 
-    private data class DnsRules(
-        private val mapping: Map<String, List<InetAddress>>,
-    ) {
-        fun isEmpty(): Boolean = mapping.isEmpty()
-
-        fun hosts(): List<String> = mapping.keys.toList()
-
-        fun addressesFor(hostname: String?): List<InetAddress> {
-            val normalized = hostname?.trim()?.lowercase().orEmpty()
-            if (normalized.isBlank()) return emptyList()
-            mapping[normalized]?.let { return it }
-            return mapping.entries.firstOrNull { (host, _) ->
-                normalized == host || normalized.endsWith(".$host")
-            }?.value.orEmpty()
-        }
-
-        companion object {
-            fun parse(raw: String): DnsRules {
-                val map = linkedMapOf<String, List<InetAddress>>()
-                raw.lineSequence()
-                    .map { it.substringBefore('#').trim() }
-                    .filter { it.isNotBlank() }
-                    .forEach { line ->
-                        val separator = when {
-                            '=' in line -> '='
-                            ' ' in line -> ' '
-                            else -> return@forEach
-                        }
-                        val host = line.substringBefore(separator).trim().lowercase()
-                        val ips = line.substringAfter(separator).split(',', ';', ' ')
-                            .map { it.trim() }
-                            .filter { it.isNotBlank() }
-                            .mapNotNull { ip ->
-                                runCatching { InetAddress.getByName(ip) }.getOrNull()
-                            }
-                        if (host.isNotBlank() && ips.isNotEmpty()) {
-                            map[host] = ips
-                        }
-                    }
-                return DnsRules(map)
-            }
-        }
-    }
 }
