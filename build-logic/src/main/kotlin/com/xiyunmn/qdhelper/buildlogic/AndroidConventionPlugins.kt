@@ -11,7 +11,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 private const val COMPILE_SDK = 37
 private const val MIN_SDK = 28
 private const val TARGET_SDK = 37
-private val MODULE_ABIS = setOf("arm64-v8a", "x86_64")
+private val MODULE_ABIS = setOf("arm64-v8a")
 
 class AndroidApplicationConventionPlugin : Plugin<Project> {
     override fun apply(project: Project) = with(project) {
