@@ -4,8 +4,6 @@ on:
   workflow_dispatch:
   push:
     branches: ['**']
-  pull_request:
-    branches: [main]
 
 permissions:
   contents: read
@@ -18,41 +16,73 @@ jobs:
   build:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set CI version
+        shell: pwsh
+        run: |
+          $count = git rev-list --count HEAD
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot read Git revision count.' }
+          $commit = git rev-parse --short=7 HEAD
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot read Git revision.' }
+          "ORG_GRADLE_PROJECT_CI_VERSION_NAME=r$count.$commit" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
-      - uses: android-actions/setup-android@v3
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
         with:
           packages: platform-tools
-      - uses: gradle/actions/setup-gradle@v4
-      - name: Install SDK
+      - name: Set up Gradle cache
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
+          cache-cleanup: on-success
+      - name: Install Android platform
         shell: pwsh
-        run: sdkmanager --channel=3 'platforms;android-37.0'
-      - name: Build compressed APKs without signing secrets
+        run: |
+          sdkmanager --channel=3 'platforms;android-37.0'
+          if ($LASTEXITCODE -ne 0) { throw 'Android platform installation failed.' }
+      - name: Decode signing key
         shell: pwsh
-        run: .\gradlew.bat :app:assembleDebug :app:assembleBeta :app:assembleRelease -x lintVitalDebug -x lintVitalBeta -x lintVitalRelease --console=plain
-      - name: Prepare APK downloads
-        id: apks
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          foreach ($name in 'KEYSTORE_BASE64','KEYSTORE_PASSWORD','KEY_ALIAS','KEY_PASSWORD') {
+            if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($name))) {
+              throw "Missing signing secret: $name"
+            }
+          }
+          $keyPath = Join-Path $env:RUNNER_TEMP 'qdhelper-release.jks'
+          [IO.File]::WriteAllBytes($keyPath, [Convert]::FromBase64String($env:KEYSTORE_BASE64))
+          "RELEASE_KEYSTORE_FILE=$keyPath" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Build signed and minified APK
+        shell: pwsh
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: .\gradlew.bat :app:assembleRelease -x lintVitalRelease --console=plain --no-configuration-cache
+      - name: Remove temporary signing key
+        if: always()
+        shell: pwsh
+        run: |
+          $keyPath = Join-Path $env:RUNNER_TEMP 'qdhelper-release.jks'
+          if (Test-Path -LiteralPath $keyPath) { Remove-Item -LiteralPath $keyPath }
+      - name: Prepare APK download
+        id: apk
         uses: ./.github/actions/prepare-apks
-        with:
-          channels: debug,beta,release
-      - name: Upload Debug APK
+      - name: Upload APK
         uses: actions/upload-artifact@v7.0.2
         with:
-          path: ${{ steps.apks.outputs.debug }}
+          path: ${{ steps.apk.outputs.apk }}
           archive: false
           if-no-files-found: error
-      - name: Upload Beta APK
-        uses: actions/upload-artifact@v7.0.2
-        with:
-          path: ${{ steps.apks.outputs.beta }}
-          archive: false
-          if-no-files-found: error
-      - name: Upload Release APK
-        uses: actions/upload-artifact@v7.0.2
-        with:
-          path: ${{ steps.apks.outputs.release }}
-          archive: false
-          if-no-files-found: error
+          retention-days: 30

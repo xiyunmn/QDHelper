@@ -21,6 +21,7 @@ import com.xiyunmn.qdhelper.feature.api.runtime.HookModule
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.TimeZone
 import java.util.concurrent.ConcurrentHashMap
 import java.lang.reflect.Method
 import java.lang.reflect.Proxy
@@ -34,7 +35,9 @@ object AutoSignInFeature : InstallableFeature {
     private val pendingAttempts = ConcurrentHashMap.newKeySet<String>()
     private val activeSubscriptions = ConcurrentHashMap.newKeySet<Any>()
     private val mainHandler = Handler(Looper.getMainLooper())
-    private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+    private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply {
+        timeZone = TimeZone.getTimeZone("Asia/Shanghai")
+    }
     private val lifecycleSubscriptions = mutableListOf<AutoCloseable>()
 
     @Volatile

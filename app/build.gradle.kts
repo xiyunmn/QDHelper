@@ -2,6 +2,30 @@ plugins {
     id("qdhelper.android.application")
 }
 
+val majorVersion = 1
+val minorVersion = 0
+val patchVersion = 0
+val baseVersionName = "$majorVersion.$minorVersion.$patchVersion"
+val gitCommitCount = providers.exec {
+    workingDir(rootProject.projectDir)
+    commandLine("git", "-c", "safe.directory=${rootProject.projectDir.absolutePath}", "rev-list", "--count", "HEAD")
+}.standardOutput.asText.get().trim().toInt()
+require(gitCommitCount in 1..1_000_000_000) { "Git revision count is outside the supported version range" }
+val revisionVersionCode = 100000 + gitCommitCount * 2
+val ciRevision = providers.gradleProperty("CI_VERSION_NAME").orNull
+require(ciRevision == null || ciRevision.matches(Regex("r[0-9]+\\.[0-9a-f]{7,40}"))) {
+    "CI_VERSION_NAME must be r<revision>.<short SHA>"
+}
+val ciVersionName = ciRevision?.let { "$baseVersionName.$it" }
+
+fun versionNameForBuildType(buildType: String): String = ciVersionName ?: when (buildType) {
+    "debug" -> "$baseVersionName-debug"
+    "beta" -> "$baseVersionName-beta"
+    else -> baseVersionName
+}
+fun versionCodeForBuildType(buildType: String): Int =
+    revisionVersionCode + if (buildType == "release" && ciVersionName == null) 1 else 0
+
 val releaseKeystoreFile = providers.environmentVariable("RELEASE_KEYSTORE_FILE").orNull
 val releaseKeystorePassword = providers.environmentVariable("KEYSTORE_PASSWORD").orNull
 val releaseKeyAlias = providers.environmentVariable("KEY_ALIAS").orNull
@@ -13,13 +37,17 @@ val hasReleaseSigning = listOf(
     releaseKeyPassword,
 ).all { !it.isNullOrBlank() }
 
+if (ciRevision != null) {
+    require(hasReleaseSigning) { "CI builds require all release signing credentials" }
+}
+
 android {
     namespace = "com.xiyunmn.qdhelper"
 
     defaultConfig {
         applicationId = "io.github.xiyunmn.qdhelper"
-        versionCode = 10000
-        versionName = "1.0.0"
+        versionCode = versionCodeForBuildType("release")
+        versionName = ciVersionName ?: baseVersionName
     }
 
     signingConfigs {
@@ -67,6 +95,34 @@ android {
             versionNameSuffix = "-beta"
             matchingFallbacks += "release"
             signingConfig = signingConfigs.getByName(if (hasReleaseSigning) "release" else "debug")
+        }
+    }
+}
+
+androidComponents {
+    onVariants { variant ->
+        val buildType = variant.buildType ?: "release"
+        variant.outputs.forEach { output ->
+            output.versionName.set(versionNameForBuildType(buildType))
+            output.versionCode.set(versionCodeForBuildType(buildType))
+        }
+    }
+}
+
+listOf("debug", "beta", "release").forEach { buildType ->
+    val taskSuffix = buildType.replaceFirstChar { it.uppercase() }
+    val moduleVersionName = versionNameForBuildType(buildType)
+    val moduleVersionCode = versionCodeForBuildType(buildType)
+    tasks.withType<Sync>().matching { it.name == "process${taskSuffix}JavaRes" }.configureEach {
+        inputs.property("moduleVersionName", moduleVersionName)
+        inputs.property("moduleVersionCode", moduleVersionCode)
+        filteringCharset = "UTF-8"
+        filesMatching("META-INF/xposed/module.prop") {
+            filter { line -> when {
+                line.startsWith("version=") -> "version=$moduleVersionName"
+                line.startsWith("versionCode=") -> "versionCode=$moduleVersionCode"
+                else -> line
+            } }
         }
     }
 }
