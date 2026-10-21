@@ -11,6 +11,7 @@ import com.xiyunmn.qdhelper.host.resolver.environment.ResolverEnvironment
 import com.xiyunmn.qdhelper.host.resolver.runtime.ResolverRuntime
 import java.lang.reflect.Method
 import java.util.LinkedHashMap
+import java.util.concurrent.ConcurrentHashMap
 
 /** Adapts feature-facing method requests to the canonical process resolver. */
 class MethodTargetResolverAdapter(
@@ -20,6 +21,7 @@ class MethodTargetResolverAdapter(
 ) : MethodTargetResolver {
     @Volatile
     private var session: ResolverSession? = null
+    private val specsByProcess = ConcurrentHashMap<String, Map<String, HostTargetSpec>>()
 
     override fun resolveMethod(
         context: Context?,
@@ -69,11 +71,17 @@ class MethodTargetResolverAdapter(
             }
             return Resolution.Unavailable(reason, false)
         }
-        val result = resolver(context.applicationContext ?: context, classLoader, processName)
-            .resolve(spec.key, forceRescan)
-        ResolverEnvironment.info(
-            "Host resolver route: target=${key.id.value}, result=${result.javaClass.simpleName}",
-        )
+        val active = resolver(context.applicationContext ?: context, classLoader, processName)
+        val result = active.resolver.resolve(spec.key, forceRescan)
+        val state = when (result) {
+            is Resolution.Resolved -> "resolved:${result.source}"
+            is Resolution.ResolvedMany -> "resolved_many:${result.source}:${result.values.size}"
+            is Resolution.Ambiguous -> "ambiguous:${result.candidateCount}:${result.reason}"
+            is Resolution.Unavailable -> "unavailable:${result.reason}:retryable=${result.retryable}"
+        }
+        if (active.routeStates.put(key.id.value, state) != state || forceRescan) {
+            ResolverEnvironment.info("Host resolver route: target=${key.id.value}, result=$state")
+        }
         return result
     }
 
@@ -93,18 +101,19 @@ class MethodTargetResolverAdapter(
     }
 
     private fun spec(processName: String, key: TargetKey.MethodTarget): HostTargetSpec? =
-        HostTargetCatalog.forProcess(processName).singleOrNull { it.key.id == key.id && it.key.cardinality == key.cardinality }
+        specsByProcess.computeIfAbsent(processName) {
+            HostTargetCatalog.forProcess(it).associateBy { spec -> spec.key.id.value }
+        }[key.id.value]?.takeIf { it.key.cardinality == key.cardinality }
 
-    private fun resolver(context: Context, classLoader: ClassLoader, processName: String): HostContractResolver {
+    private fun resolver(context: Context, classLoader: ClassLoader, processName: String): ResolverSession {
         session?.takeIf { current ->
             current.context === context && current.classLoader === classLoader && current.processName == processName
-        }?.let { return it.resolver }
+        }?.let { return it }
         return synchronized(this) {
             session?.takeIf { current ->
                 current.context === context && current.classLoader === classLoader && current.processName == processName
-            }?.resolver ?: resolverFactory(context, classLoader, processName).also { created ->
-                session = ResolverSession(context, classLoader, processName, created)
-            }
+            } ?: ResolverSession(context, classLoader, processName, resolverFactory(context, classLoader, processName))
+                .also { session = it }
         }
     }
 
@@ -130,6 +139,7 @@ class MethodTargetResolverAdapter(
         val classLoader: ClassLoader,
         val processName: String,
         val resolver: HostContractResolver,
+        val routeStates: ConcurrentHashMap<String, String> = ConcurrentHashMap(),
     )
 }
 

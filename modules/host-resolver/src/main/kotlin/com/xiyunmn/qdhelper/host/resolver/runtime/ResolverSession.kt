@@ -109,6 +109,12 @@ internal class ResolverSession(
                     }
                 } else {
                     failures += 1
+                    val reason = when (resolution) {
+                        is Resolution.Unavailable -> resolution.reason
+                        is Resolution.Ambiguous -> "ambiguous:${resolution.candidateCount}:${resolution.reason}"
+                        else -> "contract_mismatch"
+                    }
+                    ResolverEnvironment.warn("Target prewarm unavailable: target=${spec.key.id.value}, revision=${spec.revision}, reason=$reason")
                 }
             }
             if (DexKitEngine.isCurrent(generation)) {
