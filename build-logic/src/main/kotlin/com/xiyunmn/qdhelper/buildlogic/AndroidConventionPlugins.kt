@@ -11,7 +11,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 private const val COMPILE_SDK = 37
 private const val MIN_SDK = 28
 private const val TARGET_SDK = 37
-private const val ARM64_ABI = "arm64-v8a"
+private val MODULE_ABIS = setOf("arm64-v8a", "x86_64")
 
 class AndroidApplicationConventionPlugin : Plugin<Project> {
     override fun apply(project: Project) = with(project) {
@@ -23,12 +23,11 @@ class AndroidApplicationConventionPlugin : Plugin<Project> {
                 targetSdk = TARGET_SDK
                 ndk {
                     abiFilters.clear()
-                    abiFilters.add(ARM64_ABI)
+                    abiFilters.addAll(MODULE_ABIS)
                 }
             }
             splits.abi {
-                // The module ships one native architecture; ABI splits would only create
-                // misleading secondary artifacts and can reintroduce unsupported binaries.
+                // Keep both supported native architectures in the same module APK.
                 isEnable = false
             }
             compileOptions {
@@ -77,7 +76,7 @@ private fun Project.configureAndroidLibrary(resourcesEnabled: Boolean) {
             minSdk = MIN_SDK
             ndk {
                 abiFilters.clear()
-                abiFilters.add(ARM64_ABI)
+                abiFilters.addAll(MODULE_ABIS)
             }
         }
         splits.abi {

@@ -6,14 +6,14 @@ import android.os.Process
 import java.io.File
 
 /**
- * Runtime preflight for the arm64-only native boundary.
+ * Runtime preflight for the packaged 64-bit DexKit libraries.
  *
- * The module is deliberately compiled for one ABI, but the host process can still be a
- * 32-bit process on an arm64 device.  Checking both values before touching DexKit keeps that
+ * The host process can still be a 32-bit process on a 64-bit device.
+ * Checking both values before touching DexKit keeps that
  * case a normal, diagnosable capability miss instead of an UnsatisfiedLinkError/ART crash.
  */
 internal object NativeAbiSupport {
-    const val SUPPORTED_ABI = "arm64-v8a"
+    private val supportedModuleAbis = setOf("arm64-v8a", "x86_64")
     private const val MODULE_PACKAGE = "io.github.xiyunmn.qdhelper"
     const val UNSUPPORTED_ABI = "unsupported_abi"
     const val UNSUPPORTED_PROCESS_ABI = "unsupported_process_abi"
@@ -24,7 +24,7 @@ internal object NativeAbiSupport {
         unsupportedReason(Build.SUPPORTED_ABIS.asList(), Process.is64Bit())
 
     fun unsupportedReason(supportedAbis: Iterable<String>, processIs64Bit: Boolean): String? {
-        if (SUPPORTED_ABI !in supportedAbis) return UNSUPPORTED_ABI
+        if (supportedAbis.none { it in supportedModuleAbis }) return UNSUPPORTED_ABI
         if (!processIs64Bit) return UNSUPPORTED_PROCESS_ABI
         return null
     }
