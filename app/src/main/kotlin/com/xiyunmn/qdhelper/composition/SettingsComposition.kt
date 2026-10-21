@@ -22,6 +22,7 @@ import com.xiyunmn.qdhelper.feature.readtime.ReadTimeSettingsContribution
 import com.xiyunmn.qdhelper.feature.startup.StartupSettingsContribution
 import com.xiyunmn.qdhelper.feature.welfare.WelfareSettingsContribution
 import com.xiyunmn.qdhelper.foundation.identity.OwnerId
+import com.xiyunmn.qdhelper.hook.runtime.HookRuntime
 import com.xiyunmn.qdhelper.host.resolver.diagnostics.resolverDiagnosticsGateway
 import com.xiyunmn.qdhelper.settings.api.SettingsContribution
 import com.xiyunmn.qdhelper.settings.api.SettingsContributionId
@@ -38,6 +39,7 @@ internal object SettingsComposition {
         SettingsUiRuntime.configure(
             contributions = createContributions(processName, contextProvider),
             resolver = resolverDiagnosticsGateway(contextProvider, processName),
+            frameworkName = HookRuntime.frameworkName,
             restartHost = { activity, beforeKill ->
                 HostRestarter.restartHost(
                     activity = activity,

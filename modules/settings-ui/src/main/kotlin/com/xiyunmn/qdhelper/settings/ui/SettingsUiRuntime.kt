@@ -16,6 +16,7 @@ object SettingsUiRuntime {
         val applyUiSettings: (Activity) -> Unit,
         val resolver: ResolverDiagnosticsGateway? = null,
         val moduleVersion: String = "",
+        val frameworkName: String = "未知",
     )
 
     @Volatile
@@ -27,12 +28,13 @@ object SettingsUiRuntime {
         applyUiSettings: (Activity) -> Unit,
         resolver: ResolverDiagnosticsGateway? = null,
         moduleVersion: String = "",
+        frameworkName: String = "未知",
     ) {
         DefaultSettingRegistry(
             keys = SettingSchemaCatalog.settingKeys,
             contributions = contributions,
         )
-        val next = Configuration(contributions.toList(), restartHost, applyUiSettings, resolver, moduleVersion)
+        val next = Configuration(contributions.toList(), restartHost, applyUiSettings, resolver, moduleVersion, frameworkName)
         configuration = next
     }
 

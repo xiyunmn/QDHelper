@@ -79,7 +79,7 @@ internal fun Dashboard(entry: SettingsEntry, controller: SettingsController, que
                             }
                             Switch(controller.boolean(module.key), { controller.toggle(module, it) })
                         }
-                        Text("v$moduleVersion · 宿主 $version · Android ${Build.VERSION.RELEASE}", Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        RuntimeDetails(moduleVersion, version, config.frameworkName)
                         HorizontalDivider(Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .5f))
                         ResolverSummary(controller)
                     }
@@ -106,6 +106,22 @@ internal fun Dashboard(entry: SettingsEntry, controller: SettingsController, que
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun RuntimeDetails(moduleVersion: String, hostVersion: String, frameworkName: String) {
+    Column(
+        Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 14.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        val version = moduleVersion.takeIf { it.isNotBlank() }?.let { "v${it.removePrefix("v")}" } ?: "未知"
+        Text("模块 $version", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("宿主 $hostVersion", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("Android ${Build.VERSION.RELEASE}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("框架 $frameworkName", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

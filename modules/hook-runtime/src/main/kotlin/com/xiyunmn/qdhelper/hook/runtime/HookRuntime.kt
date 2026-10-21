@@ -7,6 +7,7 @@ import com.xiyunmn.qdhelper.foundation.logging.ModuleLogger
 import com.xiyunmn.qdhelper.foundation.logging.RuntimeLog
 import com.xiyunmn.qdhelper.foundation.logging.SafeLog
 import com.xiyunmn.qdhelper.hook.adapter.LibXposedHookInstaller
+import com.xiyunmn.qdhelper.hook.framework.HookFrameworkInfo
 import com.xiyunmn.qdhelper.hook.logging.LibXposedRuntimeLogger
 import com.xiyunmn.qdhelper.hook.registry.RuntimeHookRegistry
 import io.github.libxposed.api.XposedInterface
@@ -16,6 +17,10 @@ import java.lang.reflect.Executable
 /** The single libxposed Hook installation and logging boundary. */
 object HookRuntime : ModuleLogger {
     @Volatile
+    var frameworkName: String = "未知"
+        private set
+
+    @Volatile
     private var fileLogSink: LogSink? = null
 
     fun configureFileLogSink(sink: LogSink?) {
@@ -23,6 +28,7 @@ object HookRuntime : ModuleLogger {
     }
 
     fun attach(module: XposedModule) {
+        frameworkName = HookFrameworkInfo.name(module)
         LibXposedRuntimeLogger.attach(module)
         RuntimeLog.configure(this)
     }
