@@ -20,22 +20,23 @@ object SettingsUiRuntime {
     )
 
     @Volatile
-    private var configuration: Configuration? = null
+    private var configuration: Lazy<Configuration>? = null
 
     fun configure(
-        contributions: List<SettingsContribution>,
+        contributions: () -> List<SettingsContribution>,
         restartHost: (Activity, onStarted: () -> Unit) -> Unit,
         applyUiSettings: (Activity) -> Unit,
         resolver: ResolverDiagnosticsGateway? = null,
         moduleVersion: String = "",
         frameworkName: String = "未知",
     ) {
-        DefaultSettingRegistry(
-            keys = SettingSchemaCatalog.settingKeys,
-            contributions = contributions,
-        )
-        val next = Configuration(contributions.toList(), restartHost, applyUiSettings, resolver, moduleVersion, frameworkName)
-        configuration = next
+        // Presentation metadata is needed only by the settings panel. Runtime settings
+        // and their process snapshot remain initialized on the original lifecycle path.
+        configuration = lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+            val resolved = contributions().toList()
+            DefaultSettingRegistry(keys = SettingSchemaCatalog.settingKeys, contributions = resolved)
+            Configuration(resolved, restartHost, applyUiSettings, resolver, moduleVersion, frameworkName)
+        }
     }
 
     fun captureProcessSettings(context: Context) = SettingsApplyPolicy.capture(context)
@@ -52,5 +53,5 @@ object SettingsUiRuntime {
     }
 
     internal fun requireConfiguration(): Configuration =
-        checkNotNull(configuration) { "SettingsUiRuntime is not configured" }
+        checkNotNull(configuration) { "SettingsUiRuntime is not configured" }.value
 }

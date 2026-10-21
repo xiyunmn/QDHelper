@@ -37,7 +37,7 @@ import com.xiyunmn.qdhelper.settings.ui.host.HostRestarter
 internal object SettingsComposition {
     fun configure(processName: String, contextProvider: () -> Context?) {
         SettingsUiRuntime.configure(
-            contributions = createContributions(processName, contextProvider),
+            contributions = { createContributions(processName, contextProvider) },
             resolver = resolverDiagnosticsGateway(contextProvider, processName),
             frameworkName = HookRuntime.frameworkName,
             restartHost = { activity, beforeKill ->
