@@ -11,6 +11,8 @@ import com.xiyunmn.qdhelper.shared.compose.ModuleCompositionOwner
 import android.app.Activity
 import android.app.Dialog
 import android.graphics.drawable.ColorDrawable
+import android.os.Handler
+import android.os.Looper
 import android.view.ViewGroup
 import android.view.Window
 import android.view.WindowManager
@@ -31,8 +33,21 @@ import com.xiyunmn.qdhelper.settings.ui.compose.state.SettingsController
 import com.xiyunmn.qdhelper.settings.ui.compose.screen.SettingsApp
 
 internal object ComposeSettingsPanel {
+    @Volatile
     private var current: Dialog? = null
+    private val currentLock = Any()
     private var dialogSequence = 0L
+
+    /** Release the previous generation's window before a hot reload installs a new one. */
+    fun closeForHotReload() {
+        val dialog = synchronized(currentLock) { current.also { current = null } } ?: return
+        val dismiss: () -> Unit = {
+            runCatching { if (dialog.isShowing) dialog.dismiss() }
+            Unit
+        }
+        if (Looper.myLooper() == Looper.getMainLooper()) dismiss()
+        else Handler(Looper.getMainLooper()).post(dismiss)
+    }
 
     fun showSettings(activity: Activity) {
         com.xiyunmn.qdhelper.config.ConfigRuntime.initialize(activity)
@@ -57,7 +72,8 @@ internal object ComposeSettingsPanel {
 
     fun show(activity: Activity, onBack: (() -> Unit)? = null, onDispose: () -> Unit = {}, content: @Composable (() -> Unit) -> Unit) {
         if (activity.isDestroyed || activity.isFinishing) return
-        current?.dismiss()
+        val previous = synchronized(currentLock) { current.also { current = null } }
+        previous?.dismiss()
         val owner = ModuleCompositionOwner()
         val openedAt = android.os.SystemClock.uptimeMillis()
         val dialog = object : Dialog(activity, android.R.style.Theme_Material_Light_NoActionBar) {
@@ -108,7 +124,9 @@ internal object ComposeSettingsPanel {
             owner.close()
             view.disposeComposition()
             onDispose()
-            if (current === dialog) current = null
+            synchronized(currentLock) {
+                if (current === dialog) current = null
+            }
         }
         try {
             view.setContent {
@@ -126,7 +144,7 @@ internal object ComposeSettingsPanel {
                 ) { content { dialog.dismiss() } }
             }
             dialog.show()
-            current = dialog
+            synchronized(currentLock) { current = dialog }
             owner.resume()
             dialog.window!!.apply {
                 setBackgroundDrawable(ColorDrawable(UiColors.Panel))

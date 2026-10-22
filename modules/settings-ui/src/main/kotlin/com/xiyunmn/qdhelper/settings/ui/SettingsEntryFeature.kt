@@ -12,7 +12,10 @@ import com.xiyunmn.qdhelper.feature.api.runtime.InstallableFeature
 import com.xiyunmn.qdhelper.feature.api.runtime.HookModule
 import com.xiyunmn.qdhelper.foundation.identity.OwnerId
 import com.xiyunmn.qdhelper.host.api.symbol.HostSymbols as QDReaderHost
-import java.util.Collections
+import com.xiyunmn.qdhelper.hook.view.LongPressRegistration
+import com.xiyunmn.qdhelper.hook.view.LongPressRegistrationResult
+import com.xiyunmn.qdhelper.hook.view.LongPressResult
+import com.xiyunmn.qdhelper.feature.api.runtime.ViewLongPressCallbacks
 import java.util.WeakHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -25,7 +28,7 @@ object SettingsEntryFeature : InstallableFeature {
     override val name: String = "SettingsEntryFeature"
 
     private val entryViewIds = listOf("ivSetting", "ivMoreView")
-    private val boundViews: MutableSet<View> = Collections.newSetFromMap(WeakHashMap())
+    private val boundViews: MutableMap<View, AutoCloseable> = WeakHashMap()
     private val installed = AtomicBoolean(false)
 
     override fun install(
@@ -53,8 +56,10 @@ object SettingsEntryFeature : InstallableFeature {
             return
         }
         FeatureResources.register("settings-entry") {
+            ComposeSettingsPanel.closeForHotReload()
             runCatching { registration.close() }
-            boundViews.clear()
+            val registrations = synchronized(boundViews) { boundViews.values.toList().also { boundViews.clear() } }
+            registrations.forEach { runCatching { it.close() } }
             installed.set(false)
         }
         FeatureHooks.i("Settings host long-press entry subscribed: phase=$phase, process=$processName")
@@ -78,17 +83,37 @@ object SettingsEntryFeature : InstallableFeature {
         var boundCount = 0
         entryViewIds.forEach { idName ->
             findChildViewsByIdName(root, idName).forEach { view ->
-                if (!boundViews.add(view)) return@forEach
-                view.setOnLongClickListener {
+                synchronized(boundViews) {
+                    if (boundViews.containsKey(view)) return@forEach
+                }
+                val result = ViewLongPressCallbacks.register(
+                    target = view,
+                    registration = LongPressRegistration(
+                        owner = OwnerId("settings-ui"),
+                        id = "settings.entry.${idName}",
+                        priority = 100,
+                    ),
+                ) { _, _ ->
                     if (!activity.isFinishing && !activity.isDestroyed) {
+                        // The central long-press router short-circuits View.performLongClick,
+                        // so reproduce the host's normal long-press触感反馈 here.
+                        runCatching {
+                            view.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+                        }
+                        FeatureHooks.i("Settings open requested: activity=${QDReaderHost.classLabel(activity.javaClass.name)}")
                         runCatching { ComposeSettingsPanel.showSettings(activity) }.onFailure { error ->
                             FeatureHooks.w("Settings open failed: ${error.javaClass.name}")
                             Toast.makeText(activity, "设置打开失败，请重试", Toast.LENGTH_SHORT).show()
                         }
                     }
-                    true
+                    LongPressResult.Return(true)
                 }
-                boundCount += 1
+                if (result is LongPressRegistrationResult.Registered) {
+                    synchronized(boundViews) { boundViews[view] = result.registration }
+                    boundCount += 1
+                } else {
+                    FeatureHooks.w("Settings long-press registration skipped: id=$idName")
+                }
             }
         }
         if (boundCount > 0) {
