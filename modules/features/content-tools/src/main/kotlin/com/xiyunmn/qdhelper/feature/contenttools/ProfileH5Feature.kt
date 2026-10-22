@@ -25,7 +25,7 @@ import java.util.WeakHashMap
 import org.json.JSONObject
 import org.json.JSONTokener
 
-/** Adapts the 7.9.476 H5 profile while leaving the host's H5 navigation in place. */
+/** Adapts the host's independently deployed H5 profile without replacing its navigation. */
 object ProfileH5Feature : InstallableFeature {
     override val name: String = "ProfileH5Feature"
 
@@ -40,6 +40,7 @@ object ProfileH5Feature : InstallableFeature {
             }
             ProfileH5LongPress.clear()
             ProfileH5WebViewRegistry.clear()
+            ProfileH5PageApplier.clear()
         }
     }
 
@@ -114,6 +115,37 @@ object ProfileH5Feature : InstallableFeature {
 }
 
 internal object ProfileH5PageApplier {
+    private val lastResults = Collections.synchronizedMap(WeakHashMap<Any, String>())
+    private val polling = Collections.synchronizedMap(WeakHashMap<Any, Boolean>())
+
+    fun clear() {
+        lastResults.clear()
+        polling.clear()
+    }
+
+    private fun report(webView: Any, reason: String, raw: String?) {
+        val result = ProfileH5Policy.summarizeResult(raw)
+        if (lastResults.put(webView, result) != result) {
+            FeatureHooks.i("Profile H5 injection result: reason=$reason, result=$result")
+        }
+    }
+
+    private fun pollStatus(webView: Any) {
+        val view = webView as? View ?: return
+        if (polling.put(webView, true) == true) return
+        // evaluateJavascript returns before asynchronous requests finish. Sample their outcome
+        // a bounded number of times; this does not repeat requests or retain page payloads.
+        listOf(1500L, 10000L, 24000L).forEach { delay ->
+            val posted = view.postDelayed({
+                if (polling[webView] == true && ProfileH5Policy.isProfileHomeUrl(CardPlazaWebViewAccess.urlOf(webView))) {
+                    CardPlazaWebViewAccess.evaluate(webView, PROFILE_H5_STATUS_SCRIPT) { report(webView, "section-status", it) }
+                }
+                if (delay == 24000L) polling.remove(webView)
+            }, delay)
+            if (!posted) polling.remove(webView)
+        }
+    }
+
     fun apply(owner: Any, expectedUrl: String?, reason: String, options: ProfileH5Options) {
         val webViews = CardPlazaWebViewAccess.webViewsOf(owner) + ProfileH5WebViewRegistry.snapshot()
         val seen = Collections.newSetFromMap(IdentityHashMap<Any, Boolean>())
@@ -130,10 +162,8 @@ internal object ProfileH5PageApplier {
                 webView = webView,
                 script = ProfileH5Policy.script(options),
                 onResult = { rawResult ->
-                    FeatureHooks.i(
-                        "Profile H5 injection result: reason=$reason, " +
-                            "result=${ProfileH5Policy.summarizeResult(rawResult)}",
-                    )
+                    report(webView, reason, rawResult)
+                    if (options.privacyRestore) pollStatus(webView)
                 },
             )
             if (!queued) FeatureHooks.w("Profile H5 injection unavailable: reason=$reason")
@@ -168,7 +198,7 @@ internal object ProfileH5Policy {
     private const val AVATAR_TOKEN = "__QDHELPER_AVATAR_ENABLED__"
     private const val USER_ID_TOKEN = "__QDHELPER_USER_ID_ENABLED__"
     private const val PRIVACY_TOKEN = "__QDHELPER_PRIVACY_ENABLED__"
-    private const val RESULT_LIMIT = 240
+    private const val RESULT_LIMIT = 600
     private val allowedHosts = setOf(
         "h5.if.qidian.com",
         "brave.if.qidian.com",
@@ -310,17 +340,20 @@ private const val PROFILE_H5_SCRIPT_TEMPLATE = """
         var allowedHost = /^(h5|brave|jtest)\.if\.qidian\.com$/i.test(window.location.hostname);
         if (window.location.protocol !== 'https:' || !allowedHost || path !== '/new/user-center/home') return 'ignored';
         var options = {avatarOriginal: __QDHELPER_AVATAR_ENABLED__, userId: __QDHELPER_USER_ID_ENABLED__, privacyRestore: __QDHELPER_PRIVACY_ENABLED__};
-        var stateKey = '__qdhProfileH5V2';
+        var stateKey = '__qdhProfileH5V3';
         var existing = window[stateKey];
         if (existing && typeof existing.setOptions === 'function') return existing.setOptions(options);
+        var previous = window.__qdhProfileH5V2;
+        if (previous && typeof previous.setOptions === 'function') previous.setOptions({avatarOriginal:false,userId:false,privacyRestore:false});
 
-        var userIdElementId = 'qdhelper-profile-user-id-v1';
-        var restoreContainerId = 'qdhelper-profile-restored-v1';
-        var styleElementId = 'qdhelper-profile-style-v1';
+        var userIdElementId = 'qdhelper-profile-user-id-v3';
+        var restoreContainerId = 'qdhelper-profile-restored-v3';
+        var styleElementId = 'qdhelper-profile-style-v3';
         var currentOptions = options, scheduled = false, lastAction = null, headerRetryCount = 0;
         var headerUserInfo = null, headerAuthorInfo = null, headerAuthorLight = null, isMaster = false;
         var restoreGeneration = 0, restoreUserKey = '', restoreStatus = 'idle', privacyDisplayRecord = null;
-        var mountedRestoreApps = [], cachedRestoreResults = null, cachedRestoreModules = null;
+        var mountedRestoreApps = [], sectionResults = {}, sectionStates = {}, renderedSections = {};
+        var commonModule = null, runtimeModule = null, commonStatus = 'idle', runtimeStatus = 'idle';
 
         function positiveId(value) {
           var text = String(value == null ? '' : value).trim();
@@ -366,7 +399,10 @@ private const val PROFILE_H5_SCRIPT_TEMPLATE = """
           var stats = document.querySelector('main.page .user-stats'), description = stats && stats.querySelector('.desc');
           if (!description || !description.parentElement) return false;
           if (!injected) { injected = document.createElement('p'); injected.id = userIdElementId; injected.className = 'caption tc-surface-gray-500'; description.parentElement.insertBefore(injected, description); }
-          injected.textContent = 'userId：' + userId; injected.setAttribute('data-user-id', userId); return true;
+          var label = 'userId：' + userId;
+          if (injected.textContent !== label) injected.textContent = label;
+          if (injected.getAttribute('data-user-id') !== userId) injected.setAttribute('data-user-id', userId);
+          return true;
         }
         function avatarAt(event) {
           var point=event&&event.touches&&event.touches[0]||event, x=Number(point&&point.clientX), y=Number(point&&point.clientY); if(!Number.isFinite(x)||!Number.isFinite(y))return null;
@@ -397,91 +433,226 @@ private const val PROFILE_H5_SCRIPT_TEMPLATE = """
           if(!url)return;event.preventDefault();event.stopPropagation();if(typeof event.stopImmediatePropagation==='function')event.stopImmediatePropagation();openHostActionUrl(url);
         }
         function trustedModuleUrl(rawUrl, filePattern) {
-          try { var url = new URL(rawUrl, window.location.href); if (url.protocol !== 'https:' || url.hostname !== 'qdfepccdn.qidian.com') return '';
-            if (!filePattern.test(url.pathname)) return ''; return url.href; } catch (error) { return ''; }
+          try {
+            var url = new URL(rawUrl, window.location.href);
+            if (url.protocol !== 'https:' || url.hostname !== 'qdfepccdn.qidian.com') return '';
+            if (!/^\/(h5|brave|jtest)\.if\.qidian\.com\/new\/js\/[^/]+\.js$/.test(url.pathname)) return '';
+            return filePattern.test(url.pathname.split('/').pop()) ? url.href : '';
+          } catch (error) { return ''; }
+        }
+        function publicationPrefix() {
+          var scripts = document.querySelectorAll('script[type="module"][src]');
+          for (var i = scripts.length - 1; i >= 0; i--) {
+            var entry = trustedModuleUrl(scripts[i].src, /^index_virtual_[^/]+_entry\.js$/);
+            if (entry) return new URL(entry).pathname.replace(/[^/]+$/, '');
+          }
+          return '/' + window.location.hostname + '/new/js/';
         }
         function loadedModuleUrl(filePattern) {
+          var prefix = publicationPrefix(), links = document.querySelectorAll('link[href],script[src]');
+          function match(raw) { var value = trustedModuleUrl(raw, filePattern); return value && new URL(value).pathname.indexOf(prefix) === 0 ? value : ''; }
+          for (var j = links.length - 1; j >= 0; j--) { var linked = match(links[j].href || links[j].src || ''); if (linked) return linked; }
           var resources = performance.getEntriesByType('resource');
-          for (var i = 0; i < resources.length; i++) { var trusted = trustedModuleUrl(resources[i].name,filePattern); if (trusted) return trusted; }
-          var links = document.querySelectorAll('link[href$="_chunk.js"],script[src$="_chunk.js"]');
-          for (var j = 0; j < links.length; j++) { var linked = trustedModuleUrl(links[j].href || links[j].src || '',filePattern); if (linked) return linked; }
+          for (var i = resources.length - 1; i >= 0; i--) { var loaded = match(resources[i].name); if (loaded) return loaded; }
           return '';
         }
+        function withTimeout(promise, milliseconds) {
+          return new Promise(function(resolve, reject) {
+            var timer = setTimeout(function(){reject(new Error('timeout'));}, milliseconds);
+            Promise.resolve(promise).then(function(value){clearTimeout(timer);resolve(value);},function(error){clearTimeout(timer);reject(error);});
+          });
+        }
+        function loadModule(pattern, generation, attempt) {
+          if (generation !== restoreGeneration) return Promise.reject(new Error('stale'));
+          var url = loadedModuleUrl(pattern);
+          if (url) return withTimeout(import(url), 8000);
+          if (attempt >= 2) return Promise.reject(new Error('module_missing'));
+          return new Promise(function(resolve){setTimeout(resolve, 750 * (attempt + 1));})
+            .then(function(){return loadModule(pattern, generation, attempt + 1);});
+        }
         function endpointFunction(module, endpoint) {
-          var keys = Object.keys(module); for (var i = 0; i < keys.length; i++) { var value = module[keys[i]]; if (typeof value === 'function' && String(value).indexOf(endpoint) >= 0) return value; } return null;
+          var matches = Object.keys(module || {}).map(function(key){return module[key];}).filter(function(value){return typeof value === 'function' && String(value).indexOf(endpoint) >= 0;});
+          return matches.length === 1 ? matches[0] : null;
         }
         function listLength(data, key) { return data && Array.isArray(data[key]) ? data[key].length : 0; }
         function totalOf(data, primary, fallbackList) { var total = Number(data && data[primary]); return Number.isFinite(total) && total > 0 ? total : listLength(data, fallbackList); }
         function namedComponent(module, name) {
-          var keys = Object.keys(module); for (var i = 0; i < keys.length; i++) { var value = module[keys[i]]; if (value && typeof value === 'object' && value.__name === name) return value; } return null;
+          var values = Object.keys(module || {}).map(function(key){return module[key];}).filter(function(value){return value && typeof value === 'object' && value.__name === name;});
+          return values.length === 1 ? values[0] : null;
         }
         function vueCreateApp(runtime) {
-          var keys = Object.keys(runtime); for (var i = 0; i < keys.length; i++) { var value = runtime[keys[i]]; if (value && typeof value === 'object' && typeof value.createApp === 'function' && typeof value.defineComponent === 'function') return value.createApp; }
+          if (runtime && typeof runtime.createApp === 'function') return runtime.createApp;
+          var keys = Object.keys(runtime || {});
+          for (var i = 0; i < keys.length; i++) { var value = runtime[keys[i]]; if (value && typeof value === 'object' && typeof value.createApp === 'function' && typeof value.defineComponent === 'function') return value.createApp; }
           return null;
         }
         function restorePrivacyBlock() {
-          if (!privacyDisplayRecord || !privacyDisplayRecord.node) return; var node = privacyDisplayRecord.node;
-          if (privacyDisplayRecord.style === null) node.removeAttribute('style'); else node.setAttribute('style', privacyDisplayRecord.style); privacyDisplayRecord = null;
+          if (!privacyDisplayRecord || !privacyDisplayRecord.node) return;
+          var node = privacyDisplayRecord.node;
+          if (privacyDisplayRecord.style === null) node.removeAttribute('style'); else node.setAttribute('style', privacyDisplayRecord.style);
+          privacyDisplayRecord = null;
         }
         function clearRestoredSections() {
-          var apps=mountedRestoreApps.splice(0); for(var i=0;i<apps.length;i++)try{apps[i].unmount();}catch(error){}
-          var container = document.getElementById(restoreContainerId); if (container) container.remove(); restorePrivacyBlock();
+          var apps = mountedRestoreApps.splice(0);
+          for (var i = 0; i < apps.length; i++) try { apps[i].unmount(); } catch (error) {}
+          renderedSections = {};
+          var container = document.getElementById(restoreContainerId); if (container) container.remove();
+          restorePrivacyBlock();
         }
-        function renderRestoredSections(results, commonModule, runtimeModule) {
-          clearRestoredSections(); if (!currentOptions.privacyRestore || !results || !results.length) return 0;
-          var userBook = results.find(function(item){return item.name === 'book-user';}), authorBook = results.find(function(item){return item.name === 'book-author';});
-          var book = userBook && listLength(userBook.data,'BookLists') ? userBook : authorBook, column = results.find(function(item){return item.name === 'column';}), chapter = results.find(function(item){return item.name === 'chapter';}), circle = results.find(function(item){return item.name === 'circle';}), audio = results.find(function(item){return item.name === 'audio';}), yueli = results.find(function(item){return item.name === 'yueli';});
-          var createApp=vueCreateApp(runtimeModule), stats=document.querySelector('main.page .user-stats'); if(!createApp||!stats||!stats.parentElement)return 0;
-          var container=document.createElement('div'); container.id=restoreContainerId; stats.insertAdjacentElement('afterend',container);
-          var userId=headerUserInfo&&positiveId(headerUserInfo.UserId), authorId=headerAuthorInfo&&positiveId(headerAuthorInfo.AuthorId), authorType=new URL(window.location.href).searchParams.get('authorType')||'1', mounted=0;
-          function mount(name,props){var component=namedComponent(commonModule,name);if(!component)return false;var host=document.createElement('div');container.appendChild(host);try{var app=createApp(component,props);app.directive('track',{});app.config.warnHandler=function(){};app.mount(host);mountedRestoreApps.push(app);mounted++;return true;}catch(error){host.remove();return false;}}
-          var base={isMaster:false,userId:userId,authorId:authorId,authorType:authorType};
-          if(book&&listLength(book.data,'BookLists'))mount('booklist',Object.assign({myBookList:book.data},base));
-          if(column&&listLength(column.data,'ColumnList'))mount('column',Object.assign({column:column.data},base));
-          if(chapter&&listLength(chapter.data,'ChapterReviewList'))mount('chapter-review',Object.assign({chapterReview:chapter.data},base));
-          if(circle&&listLength(circle.data,'Items'))mount('circle-review',Object.assign({circleReview:{CircleReviewList:circle.data.Items,Count:totalOf(circle.data,'TotalCount','Items')}},base));
-          if(audio&&listLength(audio.data,'DataList'))mount('audio-info',Object.assign({audioInfo:audio.data},base));
-          var days=Number(yueli&&yueli.data&&yueli.data.expInfo&&yueli.data.expInfo.days);if(Number.isFinite(days)&&days>0)mount('yueli',{yueli:{Tips:'来到起点已经 '+days+' 天',Url:'https://h5.if.qidian.com/new/yueli/?_viewmode=0&from=personalpage&userId='+encodeURIComponent(userId)},yueliSwitch:1,isMaster:false});
-          if(!mounted){container.remove();return 0;}
-          var privacyBlock = stats.querySelector('.privacy-block'); if (privacyBlock) { privacyDisplayRecord = {node:privacyBlock,style:privacyBlock.getAttribute('style')}; privacyBlock.style.setProperty('display','none','important'); }
-          return mounted;
+        var sectionDefinitions = [
+          {name:'book', component:'booklist', prop:'myBookList', list:'BookLists', count:'Count', title:'TA的书单', route:'book-list'},
+          {name:'column', component:'column', prop:'column', list:'ColumnList', count:'Count', title:'TA的专栏', route:'column-list'},
+          {name:'chapter', component:'chapter-review', prop:'chapterReview', list:'ChapterReviewList', count:'Count', title:'TA的本章说', route:'chapter-review-list'},
+          {name:'circle', component:'circle-review', prop:'circleReview', list:'CircleReviewList', count:'Count', title:'TA的帖子', route:'circle-review-list'},
+          {name:'audio', component:'audio-info', prop:'audioInfo', list:'DataList', count:'TotalCount', title:'TA的配音', route:'audio-list'},
+          {name:'yueli', component:'yueli', prop:'yueli', title:'TA的阅历'}
+        ];
+        var restoreIdentity = null;
+        function sectionData(definition) {
+          if (definition.name !== 'book') return sectionResults[definition.name];
+          var book = sectionResults['book-user'];
+          return listLength(book,'BookLists') ? book : sectionResults['book-author'];
+        }
+        function sectionAvailable(definition, data) { return definition.name === 'yueli' ? Boolean(data && data.Url) : listLength(data, definition.list) > 0; }
+        function fallbackCard(host, definition, data) {
+          var url;
+          if (definition.name === 'yueli') url = safeActionUrl(data.Url);
+          else {
+            var route = new URL('/new/user-center/' + definition.route, window.location.origin);
+            ['userId','authorId','authorType'].forEach(function(key){if(restoreIdentity[key])route.searchParams.set(key,restoreIdentity[key]);});
+            url = route.href;
+          }
+          if (!url) throw new Error('route_missing');
+          var link = document.createElement('a'); link.href = url; link.className = 'qdhelper-profile-fallback';
+          link.style.cssText = 'display:block;padding:16px;margin:8px 0;color:inherit;text-decoration:none;border-bottom:1px solid rgba(128,128,128,.18)';
+          var title = document.createElement('strong'); title.textContent = definition.title; link.appendChild(title);
+          var summary = document.createElement('div'); summary.style.cssText = 'margin-top:6px;font-size:13px;opacity:.7';
+          summary.textContent = definition.name === 'yueli' ? data.Tips : '共 ' + totalOf(data,definition.count,definition.list) + ' 条 · 查看全部';
+          link.appendChild(summary);
+          link.addEventListener('click',function(event){if(!currentOptions.privacyRestore)return;event.preventDefault();openHostActionUrl(url);});
+          host.appendChild(link);
+        }
+        function renderRestoredSections() {
+          if (!currentOptions.privacyRestore || !restoreIdentity) return;
+          var stats = document.querySelector('main.page .user-stats'); if (!stats || !stats.parentElement) return;
+          var available = sectionDefinitions.filter(function(definition){return sectionAvailable(definition,sectionData(definition));});
+          if (!available.length) return;
+          var container = document.getElementById(restoreContainerId);
+          if (!container || container.parentElement !== stats.parentElement) {
+            clearRestoredSections(); container = document.createElement('div'); container.id = restoreContainerId; stats.insertAdjacentElement('afterend',container);
+          }
+          var createApp = vueCreateApp(runtimeModule);
+          available.forEach(function(definition) {
+            var data = sectionData(definition), component = namedComponent(commonModule, definition.component);
+            var mode = createApp && component ? 'native' : 'link';
+            var previous = renderedSections[definition.name];
+            if (previous && previous.data === data && previous.mode === mode && previous.host.parentElement === container) return;
+            if (previous) { if(previous.app)try{previous.app.unmount();}catch(error){} previous.host.remove(); }
+            var host = document.createElement('div'), app = null;
+            host.setAttribute('data-qdh-section', definition.name); container.appendChild(host);
+            var props = Object.assign({isMaster:false}, restoreIdentity); props[definition.prop] = data;
+            if (definition.name === 'yueli') props.yueliSwitch = 1;
+            try {
+              if (mode === 'native') {
+                app = createApp(component, props); app.directive('track',{}); app.config.warnHandler=function(){};
+                var mountError = false; app.config.errorHandler=function(){
+                  mountError=true;sectionStates[definition.name]='render_error';
+                  var record=renderedSections[definition.name];
+                  if(record&&record.app===app){try{app.unmount();record.app=null;host.textContent='';fallbackCard(host,definition,data);sectionStates[definition.name]='link_render_error';}catch(ignored){sectionStates[definition.name]='render_error';}}
+                };
+                app.mount(host); if(mountError)throw new Error('render_error');
+                mountedRestoreApps.push(app); sectionStates[definition.name] = 'mounted';
+              } else { fallbackCard(host,definition,data); sectionStates[definition.name] = component ? 'link_no_runtime' : 'link_no_component'; }
+            } catch (error) {
+              if(app)try{app.unmount();}catch(ignored){} app=null; host.textContent='';
+              try { fallbackCard(host,definition,data); sectionStates[definition.name]='link_render_error'; }
+              catch(ignored){host.remove();sectionStates[definition.name]='render_error';return;}
+            }
+            renderedSections[definition.name] = {data:data,mode:mode,host:host,app:app};
+          });
+          // Keep a stable order without moving already-correct nodes on every MutationObserver scan.
+          var cursor = container.firstElementChild;
+          sectionDefinitions.forEach(function(definition){var record=renderedSections[definition.name];if(!record)return;if(record.host!==cursor)container.insertBefore(record.host,cursor);cursor=record.host.nextElementSibling;});
+          var privacyBlock = stats.querySelector('.privacy-block');
+          if (Object.keys(renderedSections).length && privacyBlock && (!privacyDisplayRecord || privacyDisplayRecord.node !== privacyBlock)) {
+            restorePrivacyBlock(); privacyDisplayRecord={node:privacyBlock,style:privacyBlock.getAttribute('style')};privacyBlock.style.setProperty('display','none','important');
+          }
+        }
+        function status() {
+          return 'privacy=' + restoreStatus + ',common=' + commonStatus + ',runtime=' + runtimeStatus + ',' +
+            Object.keys(sectionStates).sort().map(function(key){return key+':'+sectionStates[key];}).join('|');
+        }
+        function resetPrivacy() {
+          if (restoreUserKey) restoreGeneration++;
+          restoreUserKey='';restoreStatus='idle';restoreIdentity=null;sectionResults={};sectionStates={};clearRestoredSections();
         }
         function requestPrivacySections() {
-          var userId = headerUserInfo && positiveId(headerUserInfo.UserId), authorId = headerAuthorInfo && positiveId(headerAuthorInfo.AuthorId), privacy = Number(headerUserInfo && headerUserInfo.PrivacyStat || 0);
-          if (!currentOptions.privacyRestore) { restoreGeneration++; restoreUserKey=''; restoreStatus='idle'; cachedRestoreResults=null; cachedRestoreModules=null; clearRestoredSections(); return; }
-          if (!userId) { restoreStatus=restoreStatus==='idle'?'waiting-header':restoreStatus; return; }
-          if (isMaster || privacy === 0) { restoreGeneration++; restoreUserKey=''; restoreStatus='idle'; cachedRestoreResults=null; cachedRestoreModules=null; clearRestoredSections(); return; }
-          var userKey = userId+':'+authorId;
-          if(restoreUserKey===userKey&&restoreStatus==='loading')return;
-          if(restoreUserKey===userKey&&restoreStatus.indexOf('done:')===0){if(document.getElementById(restoreContainerId))return;if(cachedRestoreResults&&cachedRestoreModules){var remounted=renderRestoredSections(cachedRestoreResults,cachedRestoreModules.common,cachedRestoreModules.runtime);restoreStatus='done:'+remounted;if(remounted)return;}}
-          if(restoreUserKey&&restoreUserKey!==userKey){cachedRestoreResults=null;cachedRestoreModules=null;clearRestoredSections();}
-          restoreUserKey=userKey; restoreStatus='loading'; var generation=++restoreGeneration;
-          var commonUrl=loadedModuleUrl(/^\/h5\.if\.qidian\.com\/new\/js\/page_common_user-center_[^/]+_chunk\.js$/),runtimeUrl=loadedModuleUrl(/^\/h5\.if\.qidian\.com\/new\/js\/modules_[^/]+_chunk\.js$/); if (!commonUrl||!runtimeUrl) { restoreStatus='no-module'; return; }
-          Promise.all([import(commonUrl),import(runtimeUrl)]).then(function(modules) {var module=modules[0];
-            var specs=[{name:'book-user',endpoint:'/argus/api/v1/booklist/getuserbooklist',args:[userId,1]},{name:'column',endpoint:'/argus/api/v1/column/getusercolumnlist',args:[userId,1]},{name:'chapter',endpoint:'/argus/api/v1/chapterreview/getuserchapterreview',args:[userId,1]},{name:'circle',endpoint:'/argus/api/v2/circle/getusercirclereviewlist',args:[userId,1]},{name:'audio',endpoint:'/argus/api/v1/user/getuserpageinfoaudiolist',args:[userId,1]}];
-            if (authorId) specs.push({name:'book-author',endpoint:'/argus/api/v1/booklist/getyoutabooklist',args:[authorId,1]});
-            var requests=specs.map(function(spec){var fn=endpointFunction(module,spec.endpoint); if(!fn)return Promise.resolve({name:spec.name,data:null}); return Promise.resolve(fn.apply(null,spec.args)).then(function(data){return{name:spec.name,data:data||null};},function(){return{name:spec.name,data:null};});});
-            requests.push(fetch('/majax/ReadExp/Index?userId='+encodeURIComponent(userId),{credentials:'include',headers:{Accept:'application/json'}}).then(function(response){return response.ok?response.json():null;}).then(function(json){return{name:'yueli',data:json&&json.data||null};},function(){return{name:'yueli',data:null};}));
-            return Promise.all(requests).then(function(results){return{results:results,common:modules[0],runtime:modules[1]};});
-          }).then(function(payload){if(generation!==restoreGeneration||!currentOptions.privacyRestore)return;cachedRestoreResults=payload.results;cachedRestoreModules={common:payload.common,runtime:payload.runtime};var count=renderRestoredSections(payload.results,payload.common,payload.runtime);restoreStatus='done:'+count;}).catch(function(){if(generation===restoreGeneration)restoreStatus='error';});
+          var userId=headerUserInfo&&positiveId(headerUserInfo.UserId),authorId=headerAuthorInfo&&positiveId(headerAuthorInfo.AuthorId),privacy=Number(headerUserInfo&&headerUserInfo.PrivacyStat||0);
+          if (!currentOptions.privacyRestore || (userId && (isMaster || privacy === 0))) { resetPrivacy(); return; }
+          if (!userId) { if(restoreUserKey)resetPrivacy();restoreStatus='waiting_header';return; }
+          var userKey=userId+':'+authorId;
+          if (restoreUserKey === userKey) { renderRestoredSections(); return; }
+          resetPrivacy();restoreUserKey=userKey;restoreStatus='active';var generation=++restoreGeneration;
+          restoreIdentity={userId:userId,authorId:authorId,authorType:new URL(window.location.href).searchParams.get('authorType')||'1'};
+          commonStatus='loading';runtimeStatus='loading';commonModule=null;runtimeModule=null;
+          function current(){return generation===restoreGeneration&&currentOptions.privacyRestore;}
+          function complete(name,data,state){
+            if(!current())return;sectionResults[name]=data;sectionStates[name]=state;
+            try{renderRestoredSections();}catch(error){sectionStates[name]='render_error';}
+          }
+          var specs=[{name:'book-user',endpoint:'/argus/api/v1/booklist/getuserbooklist',args:[userId,1],list:'BookLists'},
+            {name:'column',endpoint:'/argus/api/v1/column/getusercolumnlist',args:[userId,1],list:'ColumnList'},
+            {name:'chapter',endpoint:'/argus/api/v1/chapterreview/getuserchapterreview',args:[userId,1],list:'ChapterReviewList'},
+            {name:'circle',endpoint:'/argus/api/v2/circle/getusercirclereviewlist',args:[userId,1],list:'Items'},
+            {name:'audio',endpoint:'/argus/api/v1/user/getuserpageinfoaudiolist',args:[userId,1],list:'DataList'}];
+          if(authorId)specs.push({name:'book-author',endpoint:'/argus/api/v1/booklist/getyoutabooklist',args:[authorId,1],list:'BookLists'});
+          specs.forEach(function(spec){sectionStates[spec.name]='waiting_api';});sectionStates.yueli='loading';
+          // Independent source: a missing host JS module must not suppress this request.
+          var controller=typeof AbortController==='function'?new AbortController():null;
+          withTimeout(Promise.resolve().then(function(){return fetch('/majax/ReadExp/Index?userId='+encodeURIComponent(userId),{credentials:'include',headers:{Accept:'application/json'},signal:controller?controller.signal:undefined});})
+            .then(function(response){if(!response.ok)throw new Error('http_error');return response.json();}),10000)
+            .then(function(json){var days=Number(json&&json.data&&json.data.expInfo&&json.data.expInfo.days);complete('yueli',Number.isFinite(days)&&days>0?{Tips:'来到起点已经 '+days+' 天',Url:'https://h5.if.qidian.com/new/yueli/?_viewmode=0&from=personalpage&userId='+encodeURIComponent(userId)}:null,'empty');},
+              function(error){if(controller)controller.abort();complete('yueli',null,error.message==='timeout'?'timeout':'request_error');});
+          loadModule(/^modules_[^/]+_chunk\.js$/,generation,0).then(function(module){if(!current())return;runtimeModule=module;runtimeStatus=vueCreateApp(module)?'ready':'contract_missing';renderRestoredSections();},function(error){if(current()){runtimeStatus=error.message==='module_missing'?'missing':'load_error';renderRestoredSections();}});
+          loadModule(/^page_common_user-center_[^/]+_chunk\.js$/,generation,0).then(function(module){
+            if(!current())return;commonModule=module;commonStatus='ready';renderRestoredSections();
+            specs.forEach(function(spec){
+              try {
+                var fn=endpointFunction(module,spec.endpoint);
+                if(!fn){complete(spec.name,null,'api_missing');return;}
+                sectionStates[spec.name]='loading';
+                withTimeout(Promise.resolve().then(function(){return fn.apply(null,spec.args);}),10000).then(function(data){
+                  if(!data||typeof data!=='object'||!Array.isArray(data[spec.list])){complete(spec.name,null,'response_mismatch');return;}
+                  var count=data[spec.list].length;
+                  if(spec.name==='circle')data={CircleReviewList:data.Items,Count:totalOf(data,'TotalCount','Items')};
+                  complete(spec.name,data,count?'ready':'empty');
+                },function(error){complete(spec.name,null,error&&error.message==='timeout'?'timeout':'request_error');});
+              } catch(error){complete(spec.name,null,'api_error');}
+            });
+          },function(error){if(!current())return;commonStatus=error.message==='module_missing'?'missing':'load_error';specs.forEach(function(spec){complete(spec.name,null,'module_unavailable');});});
         }
-        function scan() { var hasHeader=readHeaderModel();if(!hasHeader){if(headerRetryCount<20){headerRetryCount++;setTimeout(scheduleScan,250);}requestPrivacySections();return 'waiting:header,privacy='+restoreStatus;}headerRetryCount=0;var userIdApplied=applyUserId();requestPrivacySections();return 'ready:userId='+(userIdApplied?'1':'0')+',privacy='+restoreStatus; }
-        function scheduleScan() { if(scheduled)return; scheduled=true; window.requestAnimationFrame(function(){scheduled=false;scan();}); }
-        function setOptions(nextOptions) {
-          currentOptions=nextOptions; lastAction=null; if(!currentOptions.userId)applyUserId();
-          if(!currentOptions.privacyRestore){restoreGeneration++;restoreUserKey='';restoreStatus='idle';cachedRestoreResults=null;cachedRestoreModules=null;clearRestoredSections();}
-          return scan();
+        function scan() {
+          var hasHeader=readHeaderModel();
+          if(!hasHeader&&headerRetryCount<20){headerRetryCount++;setTimeout(scheduleScan,250);}else if(hasHeader)headerRetryCount=0;
+          var applied=applyUserId();requestPrivacySections();return 'idVisible='+(applied?'1':'0')+','+status();
         }
+        function scheduleScan() { if(scheduled)return;scheduled=true;window.requestAnimationFrame(function(){scheduled=false;scan();}); }
+        function setOptions(nextOptions) { currentOptions=nextOptions;lastAction=null;return scan(); }
+
         ensureStyle(); document.addEventListener('touchstart',rememberAction,true); document.addEventListener('mousedown',rememberAction,true); document.addEventListener('click',openProtectedStat,true);
         var observer=new MutationObserver(scheduleScan); observer.observe(document.body||document.documentElement,{childList:true,subtree:true});
-        window[stateKey]={setOptions:setOptions,target:actionTarget}; return setOptions(options);
+        window[stateKey]={setOptions:setOptions,target:actionTarget,status:status}; return setOptions(options);
       } catch (error) { return 'error:'+error; }
     })();
 """
 
 private const val PROFILE_H5_ACTION_TARGET_SCRIPT = """
     (function() {
-      var state = window.__qdhProfileH5V2;
+      var state = window.__qdhProfileH5V3;
       return state && typeof state.target === 'function' ? state.target() : null;
     })();
+"""
+
+private const val PROFILE_H5_STATUS_SCRIPT = """
+    (function(){var state=window.__qdhProfileH5V3;return state&&state.status?state.status():"not-installed";})();
 """
