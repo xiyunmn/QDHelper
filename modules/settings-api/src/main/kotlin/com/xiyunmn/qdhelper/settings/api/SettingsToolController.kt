@@ -4,7 +4,8 @@ import android.app.Activity
 import android.content.Context
 
 /** Feature-owned data and commands for dedicated settings tools, without a UI toolkit dependency. */
-data class SettingsToolField(val id: String, val label: String, val value: String, val numeric: Boolean = false)
+data class SettingsToolField(val id: String, val label: String, val value: String, val numeric: Boolean = false,
+    val rangeEnd: String? = null)
 enum class SettingsToolStatus { Neutral, Success, Warning, Error }
 data class SettingsToolEntry(
     val id: String,

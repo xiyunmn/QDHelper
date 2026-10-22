@@ -18,7 +18,8 @@ internal object BookShieldWordRangeTool : SettingsToolController {
         val rules = BookShieldRuleRepository.snapshot(context)
         return SettingsToolState(
             text = "屏蔽 ≤ 下限或 ≥ 上限的书籍。留空停用对应一侧；字数未知或不大于 0 的书籍始终放行。",
-            fields = listOf(SettingsToolField("atMost", "屏蔽字数不超过（≤）", rules.wordsAtMost?.toString().orEmpty(), true), SettingsToolField("atLeast", "屏蔽字数不少于（≥）", rules.wordsAtLeast?.toString().orEmpty(), true)),
+            fields = listOf(SettingsToolField("atMost", "下限（≤）", rules.wordsAtMost?.toString().orEmpty(), true, rangeEnd = "atLeast"),
+                SettingsToolField("atLeast", "上限（≥）", rules.wordsAtLeast?.toString().orEmpty(), true)),
             commands = listOf(SettingsToolCommand("clear-draft", "清空输入"), SettingsToolCommand("save", "保存")),
         )
     }

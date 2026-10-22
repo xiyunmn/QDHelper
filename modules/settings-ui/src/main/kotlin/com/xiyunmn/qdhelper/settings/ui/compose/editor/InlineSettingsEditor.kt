@@ -165,7 +165,12 @@ internal fun InlineToolSetting(row: SettingsRow.Action, controller: SettingsCont
         }
         Column(Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (state.text.isNotBlank()) Text(state.text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            state.fields.forEach { field ->
+            toolFieldRows(state.fields).forEach { group ->
+                if (group.size == 2) {
+                    SettingsToolFieldRow(group, fields, enabled && !busy)
+                    return@forEach
+                }
+                val field = group.first()
                 ConsoleTextField(fields[field.id].orEmpty(), { fields[field.id] = it }, Modifier.fillMaxWidth(),
                     label = { Text(field.label) }, singleLine = true, enabled = enabled && !busy,
                     keyboardOptions = KeyboardOptions(keyboardType = if (field.numeric) KeyboardType.Number else KeyboardType.Text, imeAction = if (alwaysExpanded) ImeAction.Search else ImeAction.Default),

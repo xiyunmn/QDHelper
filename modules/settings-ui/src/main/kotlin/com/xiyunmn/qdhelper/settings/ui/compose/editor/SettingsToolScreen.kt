@@ -80,9 +80,8 @@ internal fun SettingsToolScreen(tool: SettingsToolController, controller: Settin
                     }
                 }
                 state.error?.let { error -> item("error") { Text(error, color = semanticColor(SemanticTone.Error)) } }
-                items(state.fields, key = { "field:${it.id}" }) { field ->
-                    ConsoleTextField(fields[field.id].orEmpty(), { fields[field.id] = it }, Modifier.fillMaxWidth(), label = { Text(field.label) }, singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = if (field.numeric) KeyboardType.Number else KeyboardType.Text), enabled = !busy)
+                items(toolFieldRows(state.fields), key = { "field:${it.first().id}" }) { row ->
+                    SettingsToolFieldRow(row, fields, !busy)
                 }
                 if (!fixedActions || state.commands.isNotEmpty()) item("commands") {
                     val actions = buildList {
