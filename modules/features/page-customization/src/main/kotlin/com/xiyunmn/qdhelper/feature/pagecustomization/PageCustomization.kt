@@ -63,11 +63,8 @@ object PageCustomization {
     @Volatile private var pendingScanExpiresAt: Long = 0L
     private val pendingScanRunning = AtomicBoolean(false)
     private val scanResultListeners = CopyOnWriteArraySet<(PageCustomKind, PageCustomScanResult) -> Unit>()
-    private val scanExecutor = ManagedExecutor(
-        ownerKey = "page-customization-selection-scan",
-        threadName = "QDHelper-selection-scan",
-        onFailure = { throwable -> FeatureHooks.e("Page customization scan failed", throwable) },
-    )
+    private val scanExecutorLock = Any()
+    @Volatile private var scanExecutor = createScanExecutor()
     init { FeatureResources.register("PageCustomization") { clearHotReloadState() } }
     fun storedItems(context: Context, kind: PageCustomKind): List<PageCustomItem> {
         val raw = SettingsRuntime.prefs(context).getString(kind.entriesKey, "") ?: ""
@@ -154,6 +151,22 @@ object PageCustomization {
         return consumePendingSelectionScanAsync(context, cards) { result ->
             onResult(result)
         }
+    }
+
+    /**
+     * Flutter's current精选页 has no MorphingAdapter. Its section list arrives as JSON through
+     * NativeNetApi, so scan that payload on the managed worker and keep the network callback fast.
+     */
+    fun consumePendingSelectionScanFromJsonAsync(
+        context: Context?,
+        response: String,
+        onResult: (PageCustomScanResult) -> Unit,
+    ): Boolean {
+        context ?: return false
+        if (pendingScanKind(context) != PageCustomKind.Selection) return false
+        return schedulePendingSelectionScan(context, {
+            SelectionPageCustomization.scanItemsFromJson(response)
+        }, onResult)
     }
 
     fun filterMineSource(context: Context?, source: Any?): Boolean {
@@ -268,6 +281,11 @@ object PageCustomization {
             return false
         }
         if (PageCustomizationViewInspector.isModuleSettingsRoot(root)) return false
+        SelectionPageCustomization.latestFlutterSelectionPayload()?.let { response ->
+            return consumePendingSelectionScanFromJsonAsync(context, response) { result ->
+                root.post { onResult(result) }
+            }
+        }
         val cards = SelectionPageCustomization.snapshotCardsFromRoot(root)
         if (cards.isEmpty()) return false
         return consumePendingSelectionScanAsync(context, cards) { result ->
@@ -297,11 +315,30 @@ object PageCustomization {
         cards: List<Any?>,
         onResult: (PageCustomScanResult) -> Unit,
     ): Boolean {
+        return schedulePendingSelectionScan(context, {
+            SelectionPageCustomization.scanItemsFromCards(cards)
+        }, onResult)
+    }
+
+    private fun clearHotReloadState() {
+        scanResultListeners.clear(); scanExecutor.close()
+        SelectionPageCustomization.clearFlutterSelectionPayload()
+        pendingScanRunning.set(false); pendingScanKindInMemory = null; pendingScanExpiresAt = 0L
+    }
+
+    private fun schedulePendingSelectionScan(
+        context: Context,
+        scan: () -> List<PageCustomItem>,
+        onResult: (PageCustomScanResult) -> Unit,
+    ): Boolean {
         if (!pendingScanRunning.compareAndSet(false, true)) return false
-        val accepted = scanExecutor.execute {
+        val accepted = currentScanExecutor().execute {
             try {
-                val result = consumePendingSelectionScanSnapshot(context, cards)
-                if (result != null) onResult(result)
+                val scanned = scan()
+                if (scanned.isNotEmpty()) {
+                    val result = consumePendingSelectionScanItems(context, scanned)
+                    if (result != null) onResult(result)
+                }
             } finally {
                 pendingScanRunning.set(false)
             }
@@ -310,17 +347,21 @@ object PageCustomization {
         return accepted
     }
 
-    private fun clearHotReloadState() {
-        scanResultListeners.clear(); scanExecutor.close()
-        pendingScanRunning.set(false); pendingScanKindInMemory = null; pendingScanExpiresAt = 0L
+    private fun currentScanExecutor(): ManagedExecutor = synchronized(scanExecutorLock) {
+        if (scanExecutor.isClosed) scanExecutor = createScanExecutor()
+        scanExecutor
     }
-    private fun consumePendingSelectionScanSnapshot(
+
+    private fun createScanExecutor() = ManagedExecutor(
+        ownerKey = "page-customization-selection-scan",
+        threadName = "QDHelper-selection-scan",
+        onFailure = { throwable -> FeatureHooks.e("Page customization scan failed", throwable) },
+    )
+    private fun consumePendingSelectionScanItems(
         context: Context,
-        cards: List<Any?>,
+        scanned: List<PageCustomItem>,
     ): PageCustomScanResult? {
-        if (pendingScanKind(context) != PageCustomKind.Selection) return null
-        val scanned = SelectionPageCustomization.scanItemsFromCards(cards)
-        if (scanned.isEmpty()) return null
+        if (pendingScanKind(context) != PageCustomKind.Selection || scanned.isEmpty()) return null
         val after = storeItems(context, PageCustomKind.Selection, scanned)
         clearPendingScanState(context)
         return PageCustomScanResult(matchedPage = true, count = after)

@@ -10,8 +10,17 @@ interface BookCoverGateway {
     fun loadCover(bookId: String): BookCover?
 }
 
+data class NativeNetRequest(
+    val path: String,
+    val parameters: Map<String, String>,
+    val ownerClassName: String?,
+)
+
 fun interface NativeNetResponseTransformer {
     fun transform(path: String, response: String): String
+
+    fun transform(request: NativeNetRequest, response: String): String =
+        transform(request.path, response)
 }
 
 interface NativeNetBridgeRegistry {
@@ -34,9 +43,12 @@ class NativeNetTransformerChain(
         return AutoCloseable { entries.remove(ownerId, entry) }
     }
 
-    fun transform(path: String, response: String): String {
+    fun transform(path: String, response: String): String =
+        transform(NativeNetRequest(path, emptyMap(), null), response)
+
+    fun transform(request: NativeNetRequest, response: String): String {
         return entries.values.sortedByDescending { it.priority }.fold(response) { current, entry ->
-            runCatching { entry.transformer.transform(path, current) }.getOrElse { throwable ->
+            runCatching { entry.transformer.transform(request, current) }.getOrElse { throwable ->
                 onFailure(entry.ownerId, throwable)
                 current
             }

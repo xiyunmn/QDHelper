@@ -10,6 +10,9 @@ import com.xiyunmn.qdhelper.config.SettingsRuntime
 import com.xiyunmn.qdhelper.config.SettingIds
 import java.lang.reflect.Method
 import java.security.MessageDigest
+import org.json.JSONArray
+import org.json.JSONObject
+import com.xiyunmn.qdhelper.host.api.gateway.NativeNetRequest
 import com.xiyunmn.qdhelper.host.api.symbol.HostSymbols as QDReaderHost
 object SelectionPageCustomization {
     private const val MORPHING_ADAPTER = QDReaderHost.Classes.MORPHING_ADAPTER
@@ -20,12 +23,18 @@ object SelectionPageCustomization {
     private const val ENTRANCE_TICKER_TYPE = 2
     private const val DISABLED_GUESS_SECTION_LABEL = "猜你喜欢"
     private const val DISABLED_GUESS_SECTION_MODEL = "yuedupianhao"
+    private const val FLUTTER_SELECTION_PATH = "/argus/api/v1/booksquare/getsquarepagepiece"
 
     private val rankViewTypes = setOf(13, 27, 32, 47)
     private val disabledGuessSectionTokens = setOf(
         DISABLED_GUESS_SECTION_LABEL,
         DISABLED_GUESS_SECTION_MODEL,
     )
+    @Volatile private var latestFlutterSelectionPayload: String? = null
+    // 23 is the Flutter selection site observed on 7.9.482; native selection uses the others.
+    private val selectionSites = setOf(11, 12, 14, 18, 20, 23)
+    private val reportedFlutterScopes = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+    private val reportedFlutterFilters = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
 
     data class AdapterProcessResult(
         val replacementList: List<Any?>?,
@@ -110,6 +119,130 @@ object SelectionPageCustomization {
             }
         }
         return cards
+    }
+
+    fun isFlutterSelectionPath(path: String): Boolean {
+        val rawPath = path.substringBefore('?').trimEnd('/').lowercase()
+        val argusIndex = rawPath.indexOf("/argus/")
+        val normalized = if (argusIndex >= 0) rawPath.substring(argusIndex) else rawPath
+        return normalized == FLUTTER_SELECTION_PATH
+    }
+
+    /** The same endpoint also serves category/detail pages. Missing scope is not selection. */
+    fun isFlutterSelectionRequest(request: NativeNetRequest): Boolean {
+        if (request.ownerClassName != QDReaderHost.Classes.MAIN_GROUP_ACTIVITY ||
+            !isFlutterSelectionPath(request.path)) return false
+        val parameters = request.parameters
+        return parameters["site"]?.toIntOrNull() in selectionSites &&
+            parameters["pageId"]?.toLongOrNull() == 0L &&
+            parameters["scene"]?.toIntOrNull() == 0 &&
+            (parameters["pg"]?.toIntOrNull() ?: 0) >= 1
+    }
+
+    fun traceFlutterScope(context: Context?, request: NativeNetRequest, selected: Boolean) {
+        if (!SettingsRuntime.isSelectionPageCustomEnabled(context) || reportedFlutterScopes.size >= 12) return
+        val params = request.parameters
+        val scope = "owner=${request.ownerClassName?.substringAfterLast('.') ?: "unknown"}, " +
+            "site=${params["site"]?.take(20)}, pageId=${params["pageId"]?.take(20)}, " +
+            "scene=${params["scene"]?.take(20)}, selection=$selected"
+        if (reportedFlutterScopes.add(scope)) FeatureHooks.i("Selection Flutter scope: $scope")
+    }
+
+    fun rememberFlutterSelectionPayload(raw: String) {
+        // Keep only a bounded copy for the settings-side scan. The current payload is normally
+        // ~100–150 KiB; unusually large responses should not become a process-wide cache.
+        latestFlutterSelectionPayload = raw.takeIf { it.length <= 512_000 }
+    }
+
+    fun latestFlutterSelectionPayload(): String? = latestFlutterSelectionPayload
+
+    fun clearFlutterSelectionPayload() {
+        latestFlutterSelectionPayload = null
+        reportedFlutterScopes.clear()
+        reportedFlutterFilters.clear()
+    }
+
+    /** Extract the same user-facing section candidates from the Flutter page JSON as the native path. */
+    fun scanItemsFromJson(raw: String): List<PageCustomItem> {
+        val items = jsonItems(raw) ?: return emptyList()
+        val result = linkedMapOf<String, PageCustomItem>()
+        for (index in 0 until items.length()) {
+            val item = items.optJSONObject(index) ?: continue
+            if (isJsonGuessSection(item)) break
+            jsonItemsForSection(item).forEach { candidate -> result.putIfAbsent(candidate.key, candidate) }
+        }
+        return result.values.toList()
+    }
+
+    /** Every page is scoped by its own request, including headerless load-more responses. */
+    fun filterJson(context: Context?, request: NativeNetRequest, raw: String): String {
+        context ?: return raw
+        if (!isFlutterSelectionRequest(request)) return raw
+        val parameters = request.parameters
+        val customEnabled = SettingsRuntime.isSelectionPageCustomEnabled(context)
+        val hideGuess = SettingsRuntime.isSelectionGuessWaterfallHidden(context)
+        if (!customEnabled || (!hideGuess && hiddenSelection(context).isEmpty())) return raw
+        val trimmed = raw.trim()
+        if (trimmed.isEmpty() || trimmed.first() != '{') return raw
+        return runCatching {
+            val root = JSONObject(raw)
+            val items = jsonItems(root) ?: return@runCatching raw
+            val originalCount = items.length()
+            var changed = false
+            if (hideGuess) {
+                val guessIndex = (0 until items.length())
+                    .firstOrNull { isJsonGuessSection(items.optJSONObject(it)) }
+                    ?: -1
+                if (guessIndex >= 0) {
+                    for (index in items.length() - 1 downTo guessIndex) items.remove(index)
+                    changed = true
+                } else if ((parameters["pg"]?.toIntOrNull() ?: 0) > 1 && isGuessContinuation(items)) {
+                    // Subsequent Flutter pages omit the 猜你喜欢 header and contain only its
+                    // book cards. Keep the response shape but remove that page's items too.
+                    while (items.length() > 0) items.remove(items.length() - 1)
+                    changed = true
+                }
+            }
+            val hidden = hiddenSelection(context)
+            if (!hidden.isEmpty()) {
+                for (index in items.length() - 1 downTo 0) {
+                    val item = items.optJSONObject(index) ?: continue
+                    val data = item.optJSONObject("Data") ?: continue
+                    val multiList = data.optJSONArray("MultiList")
+                    val childCandidates = multiList?.let { jsonChildCandidates(item, data, it) }.orEmpty()
+                    if (childCandidates.isNotEmpty()) {
+                        val next = JSONArray()
+                        for (childIndex in 0 until multiList!!.length()) {
+                            val child = multiList.optJSONObject(childIndex) ?: continue
+                            val candidate = childCandidates.firstOrNull { it.first === child }?.second
+                            if (candidate == null || !hidden.matches(candidate)) next.put(child)
+                            else changed = true
+                        }
+                        if (next.length() == 0) {
+                            items.remove(index)
+                            changed = true
+                        } else if (next.length() != multiList.length()) {
+                            data.put("MultiList", next)
+                        }
+                    } else {
+                        val candidate = jsonItemsForSection(item).firstOrNull()
+                        if (candidate != null && hidden.matches(candidate)) {
+                            items.remove(index)
+                            changed = true
+                        }
+                    }
+                }
+            }
+            if (changed) {
+                val pageKind = if (parameters["pg"]?.toIntOrNull() == 1) "initial" else "continuation"
+                val key = "${parameters["site"]}/$pageKind"
+                if (reportedFlutterFilters.size < 12 && reportedFlutterFilters.add(key)) {
+                    FeatureHooks.i("Selection Flutter filtered: site=${parameters["site"]}, page=$pageKind, " +
+                        "hideGuess=$hideGuess, items=$originalCount->${items.length()}")
+                }
+                root.toString()
+            } else raw
+        }.getOrDefault(raw)
     }
 
     fun processAdapterList(
@@ -324,6 +457,117 @@ object SelectionPageCustomization {
     private fun isDisabledGuessSectionCard(card: Any?): Boolean {
         if (!isMorphingCard(card)) return false
         return isDisabledGuessSectionData(invokeNoArg(card, "getData"))
+    }
+
+    private fun jsonItems(raw: String): JSONArray? = runCatching {
+        val root = JSONObject(raw)
+        jsonItems(root)
+    }.getOrNull()
+
+    private fun jsonItems(root: JSONObject): JSONArray? {
+        return root.optJSONObject("Data")?.optJSONArray("Items")
+            ?: root.optJSONArray("Items")
+    }
+
+    private fun jsonItemsForSection(item: JSONObject): List<PageCustomItem> {
+        val data = item.optJSONObject("Data") ?: return emptyList()
+        val children = data.optJSONArray("MultiList")?.let { jsonChildCandidates(item, data, it) }.orEmpty()
+        if (children.isNotEmpty()) return children.map { it.second }
+        val label = jsonSectionLabel(data) ?: return emptyList()
+        return listOf(PageCustomItem(jsonCardKey(item, data, label), label))
+    }
+
+    private fun jsonChildCandidates(
+        item: JSONObject,
+        data: JSONObject,
+        array: JSONArray,
+    ): List<Pair<JSONObject, PageCustomItem>> {
+        val result = ArrayList<Pair<JSONObject, PageCustomItem>>()
+        val common = data.optJSONObject("CommonExt")
+        val parent = listOf(
+            "view=${item.optInt("Type", data.optInt("Type", 0))}",
+            "column=${common?.optString("ColumnName").orEmpty()}",
+            "pdt=${common?.optString("PageDataType").orEmpty()}",
+            "listType=${data.optString("ListType")}",
+            "itemStyle=${data.optInt("ItemStyle", 0)}",
+        )
+        for (index in 0 until array.length()) {
+            val child = array.optJSONObject(index) ?: continue
+            val type = child.optInt("Type", 0)
+            val label = labelForJsonChildType(type) ?: continue
+            result += child to PageCustomItem(
+                key = "selection:child:${digest(parent + listOf("childType=$type", "childLabel=$label"))}",
+                label = label,
+            )
+        }
+        return result
+    }
+
+    private fun jsonSectionLabel(data: JSONObject): String? {
+        val title = data.optJSONObject("Title")
+        val column = data.optJSONObject("CommonExt")?.optString("ColumnName")
+        val normalizedColumn = column?.trim()?.uppercase()
+        val normalizedLabel = when (normalizedColumn) {
+            "BANNER" -> "顶部轮播图"
+            "APP_TAG_RANK" -> "排行榜"
+            "APP_TAG" -> "分类推荐"
+            else -> null
+        }
+        return normalizedLabel
+            ?: readableLabel(title?.optString("Name"))
+            ?: readableLabel(column)
+            ?: readableLabel(data.optString("SelectName"))
+    }
+
+    private fun labelForJsonChildType(type: Int): String? {
+        return when (type) {
+            113 -> "入口宫格"
+            114 -> "轮播消息"
+            115 -> "顶部轮播图"
+            112 -> "排行榜"
+            107 -> "分类推荐"
+            else -> null
+        }
+    }
+
+    private fun isGuessContinuation(items: JSONArray): Boolean {
+        var hasBookList = false
+        var hasAnchor = false
+        for (index in 0 until items.length()) {
+            val item = items.optJSONObject(index) ?: continue
+            val data = item.optJSONObject("Data") ?: continue
+            if (data.optJSONArray("BookList")?.length()?.let { it > 0 } == true) hasBookList = true
+            val labels = jsonItemsForSection(item).map(PageCustomItem::label)
+            if (labels.any { it in setOf("入口宫格", "轮播消息", "顶部轮播图", "排行榜", "分类推荐") }) {
+                hasAnchor = true
+            }
+        }
+        return hasBookList && !hasAnchor
+    }
+
+    private fun isJsonGuessSection(item: JSONObject?): Boolean {
+        val data = item?.optJSONObject("Data") ?: return false
+        val common = data.optJSONObject("CommonExt")
+        return listOf(
+            common?.optString("ColumnName"),
+            common?.optString("PageDataType"),
+            data.optJSONObject("Title")?.optString("Name"),
+            data.optString("SelectName"),
+            data.optString("ListType"),
+        ).any(::isDisabledGuessSectionValue)
+    }
+
+    private fun jsonCardKey(item: JSONObject, data: JSONObject, label: String): String {
+        val common = data.optJSONObject("CommonExt")
+        return "selection:card:${digest(listOf(
+            "view=${item.optInt("Type", data.optInt("Type", 0))}",
+            "child=0",
+            "label=$label",
+            "column=${common?.optString("ColumnName").orEmpty()}",
+            "pdt=${common?.optString("PageDataType").orEmpty()}",
+            "listType=${data.optString("ListType")}",
+            "itemStyle=${data.optInt("ItemStyle", 0)}",
+        ))}"
     }
 
     private fun isDisabledGuessSectionValue(value: String?): Boolean {

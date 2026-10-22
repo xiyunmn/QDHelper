@@ -11,9 +11,12 @@ import com.xiyunmn.qdhelper.feature.api.runtime.FeatureResources
 import com.xiyunmn.qdhelper.feature.api.runtime.HookModule
 import com.xiyunmn.qdhelper.feature.api.runtime.InstallableFeature
 import com.xiyunmn.qdhelper.feature.api.runtime.UiFeatureSupport
+import com.xiyunmn.qdhelper.feature.api.runtime.NativeNetBridgeRuntime
 import com.xiyunmn.qdhelper.foundation.identity.OwnerId
 import com.xiyunmn.qdhelper.foundation.runtime.HostSessionStore
 import com.xiyunmn.qdhelper.host.api.symbol.HostSymbols
+import com.xiyunmn.qdhelper.host.api.gateway.NativeNetResponseTransformer
+import com.xiyunmn.qdhelper.host.api.gateway.NativeNetRequest
 import com.xiyunmn.qdhelper.host.api.target.HostTargetResolver
 import com.xiyunmn.qdhelper.host.api.target.PageCustomizationTargetKeys
 
@@ -42,6 +45,7 @@ object PageCustomizationFeature : InstallableFeature {
         installedHooks += installMineDataHooks(module, classLoader, processName, phase)
         installedHooks += MinePageAutoRefreshCleaner.install(module, classLoader, processName, phase)
         installedHooks += installSelectionDataHooks(module, classLoader, phase)
+        installedHooks += installSelectionFlutterBridge(module, classLoader, phase)
         installedHooks += installSelectionLoadMoreGate(module, classLoader, phase)
         installedHooks += BookDetailPageCustomization.install(module, classLoader, phase)
         subscribeActivityCallbacks()
@@ -216,6 +220,32 @@ object PageCustomizationFeature : InstallableFeature {
             SelectionPageCustomization.stopLoadMore(chain.thisObject)
             null
         }
+    }
+
+    private fun installSelectionFlutterBridge(
+        module: HookModule,
+        classLoader: ClassLoader,
+        phase: String,
+    ): Int {
+        NativeNetBridgeRuntime.register("page-custom-selection-flutter", priority = 40, object : NativeNetResponseTransformer {
+            override fun transform(path: String, response: String): String = response
+
+            override fun transform(request: NativeNetRequest, response: String): String {
+                if (!SelectionPageCustomization.isFlutterSelectionPath(request.path)) return response
+                val context = HostSessionStore.contextOrNull()
+                val selected = SelectionPageCustomization.isFlutterSelectionRequest(request)
+                SelectionPageCustomization.traceFlutterScope(context, request, selected)
+                if (!selected) return response
+                if (request.parameters["pg"]?.toIntOrNull() == 1) {
+                    SelectionPageCustomization.rememberFlutterSelectionPayload(response)
+                    PageCustomization.consumePendingSelectionScanFromJsonAsync(context, response) { result ->
+                        notifyPageScanResult(context, result)
+                    }
+                }
+                return SelectionPageCustomization.filterJson(context, request, response)
+            }
+        })
+        return NativeNetBridgeRuntime.install(module, classLoader, phase)
     }
 
     private fun handlePendingPageScan(root: android.view.View?) {

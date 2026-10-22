@@ -1,5 +1,11 @@
 package com.xiyunmn.qdhelper.runtime
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
+import com.xiyunmn.qdhelper.host.api.gateway.NativeNetRequest
+import java.lang.reflect.Modifier
+
 import com.xiyunmn.qdhelper.foundation.runtime.HostSessionStore
 
 import com.xiyunmn.qdhelper.hook.resource.RuntimeCleanupRegistry
@@ -48,7 +54,7 @@ object NativeNetBridgeRuntime : NativeNetBridgeRegistry {
             ) { chain ->
                 val delegate = chain.args.getOrNull(1)
                 if (delegate == null || !searchClass.isInstance(delegate)) return@hookAround chain.proceed()
-                val proxy = bridgeProxy(classLoader, searchClass, callbackClass, delegate)
+                val proxy = bridgeProxy(classLoader, searchClass, callbackClass, delegate, bridgeOwner(delegate))
                 chain.proceed(arrayOf(chain.args.getOrNull(0), proxy))
             }.also { installed ->
                 if (installed) {
@@ -68,9 +74,24 @@ object NativeNetBridgeRuntime : NativeNetBridgeRegistry {
         }
     }
 
-    private fun transform(path: String, response: String): String {
-        return transformers.transform(path, response)
+    private fun transform(request: NativeNetRequest, response: String): String {
+        return transformers.transform(request, response)
     }
+
+    private fun bridgeOwner(delegate: Any): String? = runCatching {
+        // NetBridgeApiImp retains exactly one Context from its constructor. Resolve by
+        // structure once at registration; ambiguous or unavailable ownership stays unknown.
+        val field = delegate.javaClass.declaredFields.singleOrNull {
+            !Modifier.isStatic(it.modifiers) && Context::class.java.isAssignableFrom(it.type)
+        } ?: return@runCatching null
+        field.isAccessible = true
+        var context = field.get(delegate) as? Context
+        repeat(8) {
+            if (context is Activity) return@runCatching context?.javaClass?.name
+            context = (context as? ContextWrapper)?.baseContext ?: return@runCatching null
+        }
+        null
+    }.getOrNull()
 
     private fun resolveRegistrationMethod(classLoader: ClassLoader): Method? {
         return HostTargetResolver.resolveMethod(
@@ -92,6 +113,7 @@ object NativeNetBridgeRuntime : NativeNetBridgeRegistry {
         searchClass: Class<*>,
         callbackClass: Class<*>,
         delegate: Any,
+        ownerClassName: String?,
     ): Any = Proxy.newProxyInstance(classLoader, arrayOf(searchClass)) { proxy, method, args ->
         objectMethod(proxy, method, args) ?: if (
             (method.name == "search" || method.name == "judian") && args?.size == 4
@@ -100,7 +122,15 @@ object NativeNetBridgeRuntime : NativeNetBridgeRegistry {
             val callback = args[3]
             if (callback != null && callbackClass.isInstance(callback)) {
                 val next = args.copyOf()
-                next[3] = callbackProxy(classLoader, callbackClass, callback, path.orEmpty())
+                // Snapshot the request before dispatch; callbacks may arrive out of order or
+                // after a tab switch. Never infer response ownership from the visible page.
+                val parameters = (args[1] as? Map<*, *>)?.entries?.mapNotNull { (key, value) ->
+                    if (key is String && (value is String || value is Number || value is Boolean)) {
+                        key to value.toString()
+                    } else null
+                }?.toMap().orEmpty()
+                val request = NativeNetRequest(path.orEmpty(), parameters, ownerClassName)
+                next[3] = callbackProxy(classLoader, callbackClass, callback, request)
                 invoke(method, delegate, next)
             } else {
                 invoke(method, delegate, args)
@@ -114,10 +144,10 @@ object NativeNetBridgeRuntime : NativeNetBridgeRegistry {
         classLoader: ClassLoader,
         callbackClass: Class<*>,
         delegate: Any,
-        path: String,
+        request: NativeNetRequest,
     ): Any = Proxy.newProxyInstance(classLoader, arrayOf(callbackClass)) { proxy, method, args ->
         objectMethod(proxy, method, args) ?: if (method.name == "success" && args?.size == 1 && args[0] is String) {
-            invoke(method, delegate, arrayOf(transform(path, args[0] as String)))
+            invoke(method, delegate, arrayOf(transform(request, args[0] as String)))
         } else {
             invoke(method, delegate, args)
         }
