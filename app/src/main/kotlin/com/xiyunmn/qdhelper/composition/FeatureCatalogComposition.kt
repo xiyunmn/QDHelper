@@ -27,6 +27,7 @@ import com.xiyunmn.qdhelper.feature.contenttools.BookFansRankFeature
 import com.xiyunmn.qdhelper.feature.contenttools.CardPlazaUnlockFeature
 import com.xiyunmn.qdhelper.feature.contenttools.CircleFreeCopyFeature
 import com.xiyunmn.qdhelper.feature.contenttools.ProfileH5Feature
+import com.xiyunmn.qdhelper.feature.contenttools.ReaderBackgroundH5Feature
 import com.xiyunmn.qdhelper.feature.contenttools.ProfilePrivacyRestoreFeature
 import com.xiyunmn.qdhelper.feature.contenttools.UploadWatermarkFeature
 import com.xiyunmn.qdhelper.feature.networkidentity.NetworkPrivacyFeature
@@ -146,6 +147,7 @@ internal object FeatureCatalogComposition {
                 requiredTargets = setOf(ReaderTargetKeys.chapterCommentCopyBindMethods.id),
             ) { FreeCopyFeature },
             row("reader.background") { ReaderBackgroundFeature },
+            row("content-tools.reader-background-h5") { ReaderBackgroundH5Feature },
             row("content-tools.book-detail-free-copy") { BookDetailFreeCopyFeature },
             row("content-tools.book-detail-original-image") { BookDetailOriginalImageFeature },
             row("content-tools.card-plaza-local-unlock") { CardPlazaUnlockFeature },
