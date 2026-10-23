@@ -1,6 +1,7 @@
 package com.xiyunmn.qdhelper.feature.dialogs
 
 import android.content.Context
+import android.content.ContextWrapper
 import com.xiyunmn.qdhelper.feature.api.runtime.FeatureHooks
 import com.xiyunmn.qdhelper.host.api.symbol.HostSymbols as QDReaderHost
 import java.lang.reflect.Method
@@ -9,6 +10,13 @@ import java.util.LinkedHashMap
 
 /** Structural policy for blocking automatic update work while preserving About-page manual checks. */
 internal object AutoUpdateSuppressionPolicy {
+    fun presentationMethods(methods: List<Method>): List<Method> = methods.filter { method ->
+        !Modifier.isStatic(method.modifiers) && !method.returnType.isPrimitive &&
+            method.returnType.name.startsWith("com.qidian.QDReader.framework.widget.dialog.") &&
+            (method.parameterTypes.contentEquals(arrayOf(String::class.java, Boolean::class.javaPrimitiveType, Runnable::class.java)) ||
+                method.parameterTypes.contentEquals(arrayOf(Context::class.java, String::class.java, Boolean::class.javaPrimitiveType, Runnable::class.java, Int::class.javaPrimitiveType)))
+    }
+
     fun callbackAnchor(methods: List<Method>, callbackClasses: Collection<Class<*>>): Method? {
         val callbacks = callbackClasses.toSet()
         return methods.asSequence()
@@ -40,15 +48,19 @@ internal object AutoUpdateSuppressionPolicy {
     fun contexts(thisObject: Any?, args: List<Any?>, callback: Any?): List<Context> {
         val contexts = mutableListOf<Context>()
         fun add(value: Any?) {
-            val context = value as? Context ?: return
-            if (contexts.none { it === context }) contexts += context
+            var context = value as? Context ?: return
+            repeat(8) {
+                if (contexts.any { it === context }) return
+                contexts += context
+                context = (context as? ContextWrapper)?.baseContext ?: return
+            }
         }
 
         add(thisObject)
         args.forEach(::add)
         add(callback)
         if (callback != null) {
-            FeatureHooks.allDeclaredFields(callback.javaClass)
+            generateSequence(callback.javaClass) { it.superclass }.flatMap { FeatureHooks.allDeclaredFields(it).asSequence() }
                 .filter { field -> Context::class.java.isAssignableFrom(field.type) }
                 .forEach { field -> add(FeatureHooks.read(field, callback)) }
         }

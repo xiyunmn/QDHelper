@@ -149,6 +149,7 @@ object HostTargetCatalog {
     }
 
     private fun revisionOf(id: String): Int = when (id) {
+        DialogTargetKeys.autoUpdateEntry.id.value -> 11
         in REVISION_10_TARGET_IDS -> 10
         in REVISION_9_TARGET_IDS -> 9
         in REVISION_8_TARGET_IDS -> 8

@@ -48,6 +48,8 @@ object DialogSuppressFeature : InstallableFeature {
             shouldBlock = SettingsRuntime::isUpdateCheckSuppressed,
         )
         installedHooks += installAutoUpdateCore(module, classLoader, phase)
+        installedHooks += installUpdatePresenter(module, classLoader, phase)
+        installedHooks += ShiplyUpdateGate.install(module, classLoader)
         installedHooks += installMainNotificationNoOp(module, classLoader, phase)
         installedHooks += installNotificationDialogRequestNoOp(module, classLoader, phase)
         installedHooks += installNotificationSceneGate(module, classLoader, phase)
@@ -81,7 +83,7 @@ object DialogSuppressFeature : InstallableFeature {
      *
      * The class short name drifts inside the active interval, so primary discovery uses DexKit
      * (`autoUpdateEntryAnchor`: an update-notify string constant + the class shape). The centralized
-     * early registry supplies only audited owners before Context publication, and every candidate is
+     * early registry follows the Activity's callback type before Context publication; every candidate is
      * accepted through the same canonical verifier and cardinality rule. Every
      * callback-bearing `void`/`boolean` method and the cached-force gate are then hooked structurally.
      * Calls owned by `AboutActivity` are deliberately allowed so the user's explicit manual check works.
@@ -159,6 +161,47 @@ object DialogSuppressFeature : InstallableFeature {
             "P1 auto-update block installed $id: ${method.ownerLabel()}.${method.name}, phase=$phase",
         )
         return 1
+    }
+
+    private fun installUpdatePresenter(module: HookModule, classLoader: ClassLoader, phase: String): Int {
+        val anchor = HostTargetResolver.resolveEarlyMethod(
+            context = HostSessionStore.contextOrNull(),
+            classLoader = classLoader,
+            processName = HostSessionStore.processName,
+            key = DialogTargetKeys.updatePresenter,
+        ) ?: run {
+            FeatureHooks.w("Update presentation gate unavailable: phase=$phase")
+            return 0
+        }
+        val methods = FeatureHooks.allDeclaredMethods(anchor.declaringClass)
+        val queued = AutoUpdateSuppressionPolicy.presentationMethods(methods)
+        if (queued.size != 2) {
+            FeatureHooks.w("Update presentation contract mismatch: candidates=" + queued.size)
+            return 0
+        }
+        val handler = android.os.Handler(android.os.Looper.getMainLooper())
+        return (queued + anchor).count { method ->
+            val hookKey = AutoUpdateSuppressionPolicy.hookKey(method)
+            FeatureHooks.hookAround(module, method, "dialog.update.presentation", "qdhelper.update.presentation.$hookKey") { chain ->
+                val contexts = AutoUpdateSuppressionPolicy.contexts(chain.thisObject, chain.args, chain.thisObject)
+                if (!SettingsRuntime.isUpdateCheckSuppressed(contexts.firstOrNull() ?: HostSessionStore.contextOrNull()) ||
+                    AutoUpdateSuppressionPolicy.isAboutManualContext(contexts)
+                ) {
+                    return@hookAround chain.proceed()
+                }
+                logHit("dialog.update.presentation", hookKey, "suppress-presentation")
+                // The queued wrapper marks the dialog active after this factory returns.
+                // Continue on the next main-loop turn, just as its dismiss listener would.
+                chain.args.filterIsInstance<Runnable>().singleOrNull()?.let { completion ->
+                    handler.post {
+                        runCatching { completion.run() }.onFailure {
+                            FeatureHooks.w("Update dialog queue completion failed: " + it.javaClass.simpleName)
+                        }
+                    }
+                }
+                null
+            }
+        }.also { FeatureHooks.i("Update presentation gates installed: count=$it, phase=$phase") }
     }
 
     private fun installMainNotificationNoOp(

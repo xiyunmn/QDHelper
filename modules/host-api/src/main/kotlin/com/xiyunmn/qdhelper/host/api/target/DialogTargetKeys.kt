@@ -3,11 +3,13 @@ package com.xiyunmn.qdhelper.host.api.target
 /** Stable dialog-suppression host target contracts. */
 object DialogTargetKeys {
     val autoUpdateEntry = method("dialog.update.auto_update_entry")
+    val updatePresenter = method("dialog.update.presenter")
     val notificationRequest = method("dialog.notification.request")
     val notificationSceneGuide = method("dialog.notification.scene_guide")
 
     val all: Set<TargetKey.MethodTarget> = linkedSetOf(
         autoUpdateEntry,
+        updatePresenter,
         notificationRequest,
         notificationSceneGuide,
     )

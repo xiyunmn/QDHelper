@@ -26,7 +26,36 @@ internal object AccountNetworkWelfareQueries {
                 addUsingString("SettingUpdateVersionNotifyId_", StringMatchType.Contains)
             }
         },
-        verify = { method -> hasAutoUpdateJudianShape(method.declaringClass) },
+        verify = { method ->
+            val p = method.parameterTypes
+            Modifier.isPrivate(method.modifiers) && Modifier.isStatic(method.modifiers) &&
+                method.returnType == Void.TYPE && p.size == 5 &&
+                p[0] == Activity::class.java && p[1] == Boolean::class.javaPrimitiveType &&
+                p[2] == android.os.Handler::class.java && p[3].isInterface &&
+                p[3].enclosingClass == method.declaringClass && p[4] == Boolean::class.javaPrimitiveType &&
+                hasAutoUpdateJudianShape(method.declaringClass)
+        },
+    )
+
+    val updatePresenter = DexKitMethodQuery(
+        id = "dialog.update.presenter",
+        purpose = "update presenter via manual-version analytics and callback contract",
+        query = {
+            searchPackages("com.qidian.QDReader.other")
+            matcher {
+                returnType(Void.TYPE)
+                paramTypes(Context::class.java.name, String::class.java.name, String::class.java.name, "int")
+                addUsingString("newversion", StringMatchType.Equals)
+            }
+        },
+        verify = { method ->
+            !Modifier.isStatic(method.modifiers) && method.returnType == Void.TYPE &&
+                method.parameterTypes.contentEquals(arrayOf(Context::class.java, String::class.java, String::class.java, Int::class.javaPrimitiveType)) &&
+                method.declaringClass.interfaces.any { callback ->
+                    callback.enclosingClass?.let(::hasAutoUpdateJudianShape) == true
+                } &&
+                ReflectionAccess.fieldsDeclaredBy(method.declaringClass).any { Activity::class.java.isAssignableFrom(it.type) }
+        },
     )
 
     val commonDeviceQimei16 = semanticStaticStringGetterQuery(

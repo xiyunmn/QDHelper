@@ -96,6 +96,7 @@ internal object TargetQueryCatalog {
             AccountNetworkWelfareQueries.fakeIdentityQimei16,
             AccountNetworkWelfareQueries.fakeIdentityQimei36,
             AccountNetworkWelfareQueries.autoUpdateEntryAnchor,
+            AccountNetworkWelfareQueries.updatePresenter,
             AccountNetworkWelfareQueries.notificationDialogRequest,
             AccountNetworkWelfareQueries.notificationSceneGuide,
             AccountNetworkWelfareQueries.autoSignInManagerInstance,
