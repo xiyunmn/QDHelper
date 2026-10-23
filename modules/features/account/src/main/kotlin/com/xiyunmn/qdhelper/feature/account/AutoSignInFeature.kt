@@ -184,6 +184,11 @@ object AutoSignInFeature : InstallableFeature {
             AccountTargetKeys.checkInRequest,
         )
             ?: error("check-in observable method not found")
+        if (SettingsRuntime.hasAutoSignInAttempted(context, userId, today) ||
+            !AccountRequestLedger.reserveSignIn(context, userId, today)) {
+            pendingAttempts.remove(attemptKey)
+            return
+        }
         val requestObservable = FeatureHooks.invoke(observable, manager, activity)
             ?: error("check-in observable is null")
         val request = composeNetworkSchedulerIfAvailable(requestObservable, classLoader)
@@ -192,7 +197,6 @@ object AutoSignInFeature : InstallableFeature {
             classLoader = classLoader,
             onNext = onNext@ { response ->
                 if (!isCurrentAttempt(context, classLoader, userId, today)) {
-                    pendingAttempts.remove(attemptKey)
                     return@onNext
                 }
                 val summary = summarizeServerResponse(response)
@@ -213,11 +217,9 @@ object AutoSignInFeature : InstallableFeature {
                     )
                     showToast(activity, context, "自动签到失败：$message", Toast.LENGTH_LONG)
                 }
-                pendingAttempts.remove(attemptKey)
             },
             onError = onError@ { throwable ->
                 if (!isCurrentAttempt(context, classLoader, userId, today)) {
-                    pendingAttempts.remove(attemptKey)
                     return@onError
                 }
                 val message = throwable.message.orEmpty()
@@ -231,8 +233,8 @@ object AutoSignInFeature : InstallableFeature {
                     FeatureHooks.w("Auto sign-in check-in request failed: ${throwable.javaClass.name}: $message")
                     showToast(activity, context, "自动签到失败：$cleanMessage", Toast.LENGTH_LONG)
                 }
-                pendingAttempts.remove(attemptKey)
             },
+            onFinally = { pendingAttempts.remove(attemptKey) },
         )
         if (!subscribed) {
             pendingAttempts.remove(attemptKey)
@@ -240,7 +242,6 @@ object AutoSignInFeature : InstallableFeature {
             showToast(activity, context, "自动签到发起失败，请稍后手动重试", Toast.LENGTH_LONG)
             return
         }
-        mainHandler.postDelayed({ pendingAttempts.remove(attemptKey) }, 30_000L)
         FeatureHooks.i("Auto sign-in real check-in request launched: reason=$reason, user=${userId.masked()}")
         showToast(activity, context, "自动签到请求已发起")
     }
@@ -265,6 +266,7 @@ object AutoSignInFeature : InstallableFeature {
         classLoader: ClassLoader,
         onNext: (Any?) -> Unit,
         onError: (Throwable) -> Unit,
+        onFinally: () -> Unit,
     ): Boolean {
         // The RxJava Consumer interface letter drifts across host versions. Derive it structurally
         // from the observable's own subscribe(onNext, onError)
@@ -277,31 +279,26 @@ object AutoSignInFeature : InstallableFeature {
         val consumerClass = subscribeMethod.parameterTypes[0]
         val disposableRef = AtomicReference<Any?>()
         val terminal = AtomicBoolean(false)
-        val successConsumer = consumerProxy(classLoader, consumerClass) { value ->
-            runCatching { onNext(value) }
-                .also { terminal.set(true); disposableRef.get()?.let(activeSubscriptions::remove) }
-                .getOrThrow()
+        val tracked = AutoTaskRxLifecycle.wrap(observable, 30_000L) {
+            terminal.set(true)
+            disposableRef.get()?.let(activeSubscriptions::remove)
+            onFinally()
         }
+        val successConsumer = consumerProxy(classLoader, consumerClass) { value -> onNext(value) }
         val errorConsumer = consumerProxy(classLoader, consumerClass) { value ->
-            runCatching {
-                onError(value as? Throwable ?: RuntimeException(value?.toString().orEmpty()))
-            }.also {
-                terminal.set(true); disposableRef.get()?.let(activeSubscriptions::remove)
-            }.getOrThrow()
+            onError(value as? Throwable ?: RuntimeException(value?.toString().orEmpty()))
         }
-        val disposable = FeatureHooks.invoke(subscribeMethod, observable, successConsumer, errorConsumer)
-            ?: return false
+        val disposable = FeatureHooks.invoke(subscribeMethod, tracked, successConsumer, errorConsumer) ?: return false
         disposableRef.set(disposable)
-        if (!terminal.get()) {
-            activeSubscriptions += disposable
-        }
+        activeSubscriptions += disposable
+        if (terminal.get()) activeSubscriptions.remove(disposable)
         return true
     }
 
     private fun disposeSubscription(subscription: Any) {
         runCatching {
-            FeatureHooks.declaredMethodsNamed(subscription.javaClass, "dispose")
-                .singleOrNull { method -> method.parameterTypes.isEmpty() }
+            FeatureHooks.methodsInHierarchy(subscription.javaClass)
+                .firstOrNull { method -> method.name == "dispose" && method.parameterTypes.isEmpty() }
                 ?.let { method -> FeatureHooks.invoke(method, subscription) }
         }.onFailure { throwable ->
             FeatureHooks.w("Auto sign-in subscription dispose failed: ${throwable.javaClass.name}")

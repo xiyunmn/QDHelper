@@ -61,7 +61,9 @@ internal fun ConsoleTextField(
     OutlinedTextField(
         value, onValueChange, modifier.bringIntoViewRequester(requester), enabled = enabled,
         singleLine = singleLine, minLines = minLines, maxLines = maxLines,
-        isError = isError, label = label, placeholder = placeholder,
+        isError = isError, label = label?.let { content ->
+            { ProvideTextStyle(MaterialTheme.typography.labelSmall) { content() } }
+        }, placeholder = placeholder,
         supportingText = supportingText, leadingIcon = leadingIcon, trailingIcon = trailingIcon,
         keyboardOptions = keyboardOptions, keyboardActions = keyboardActions,
         visualTransformation = visualTransformation, textStyle = textStyle,
