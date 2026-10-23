@@ -54,7 +54,10 @@ object NativeNetBridgeRuntime : NativeNetBridgeRegistry {
             ) { chain ->
                 val delegate = chain.args.getOrNull(1)
                 if (delegate == null || !searchClass.isInstance(delegate)) return@hookAround chain.proceed()
-                val proxy = bridgeProxy(classLoader, searchClass, callbackClass, delegate, bridgeOwner(delegate))
+                val owner = bridgeOwner(delegate)
+                com.xiyunmn.qdhelper.foundation.runtime.RuntimeCapabilities.record("flutter.request-owner", "Flutter页面归属", owner != null,
+                    owner?.let { "已识别：${it.substringAfterLast('.')}" } ?: "未能确认页面归属，页面专属过滤已放行")
+                val proxy = bridgeProxy(classLoader, searchClass, callbackClass, delegate, owner)
                 chain.proceed(arrayOf(chain.args.getOrNull(0), proxy))
             }.also { installed ->
                 if (installed) {

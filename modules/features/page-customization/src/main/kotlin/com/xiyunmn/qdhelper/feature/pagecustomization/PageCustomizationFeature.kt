@@ -32,6 +32,7 @@ object PageCustomizationFeature : InstallableFeature {
                 subscriptions.clear()
             }
             mainHandler.removeCallbacksAndMessages(null)
+            SelectionPageCustomization.clearOwners()
         }
     }
 
@@ -203,20 +204,29 @@ object PageCustomizationFeature : InstallableFeature {
         phase: String,
     ): Int {
         val clazz = FeatureHooks.findClassOrNull(HostSymbols.Classes.MORPHING_FRAGMENT, classLoader) ?: return 0
+        val adapter = FeatureHooks.findDeclaredMethodOrNull(clazz, "getMAdapter")
+            ?.takeIf { it.returnType.name == HostSymbols.Classes.MORPHING_ADAPTER }
+        if (adapter == null) {
+            FeatureHooks.w("Selection scope unavailable: fragment adapter contract missing")
+            return 0
+        }
+        val tracked = FeatureHooks.hookAfter(module, adapter, "ui.selection.scope", "qdhelper.ui.selection_adapter_owner") { chain, result ->
+            SelectionPageCustomization.rememberAdapter(chain.thisObject, result)
+        }
         val method = FeatureHooks.findDeclaredMethodOrNull(clazz, "fetchMorePageData")
         if (method == null) {
             FeatureHooks.w("Selection load-more gate skipped: fetchMorePageData not found")
             return 0
         }
-        return UiFeatureSupport.installReturnValue(
+        return (if (tracked) 1 else 0) + UiFeatureSupport.installAround(
             module = module,
             id = "ui.selection.loadMoreGate",
             method = method,
             hookId = "qdhelper.ui.selection_load_more_gate",
             phase = phase,
-            shouldBlock = { SettingsRuntime.isSelectionGuessWaterfallHidden(HostSessionStore.contextOrNull()) },
-            action = "stop-load-more",
         ) { chain ->
+            if (!SettingsRuntime.isSelectionGuessWaterfallHidden(HostSessionStore.contextOrNull()) ||
+                !SelectionPageCustomization.isSelectionFragment(chain.thisObject)) return@installAround chain.proceed()
             SelectionPageCustomization.stopLoadMore(chain.thisObject)
             null
         }

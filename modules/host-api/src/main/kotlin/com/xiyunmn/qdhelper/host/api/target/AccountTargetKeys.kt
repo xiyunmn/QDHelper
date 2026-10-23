@@ -11,6 +11,8 @@ object AccountTargetKeys {
     val autoInvestLegacyRxAdapter = method("account.auto_invest.legacy_rx_adapter")
     val autoInvestRequestApi = method("account.auto_invest.request_api")
     val autoInvestReaderBookId = method("account.auto_invest.reader_book_id")
+    val verification = listOf("session", "ban", "ticket", "rand", "challenge", "validate", "seccode")
+        .associateWith { method("account.auto_invest.proof.$it") }
     val userManagerIsLoggedIn = method("account.user_manager.is_logged_in")
     val userManagerUserId = method("account.user_manager.user_id")
 
@@ -27,6 +29,7 @@ object AccountTargetKeys {
         autoInvestLegacyRxAdapter,
         autoInvestRequestApi,
         autoInvestReaderBookId,
+        *verification.values.toTypedArray(),
     )
 
     val userSession: Set<TargetKey.MethodTarget> = linkedSetOf(

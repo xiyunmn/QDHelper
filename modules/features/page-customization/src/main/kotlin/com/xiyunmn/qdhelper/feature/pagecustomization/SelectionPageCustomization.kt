@@ -35,6 +35,25 @@ object SelectionPageCustomization {
     private val selectionSites = setOf(11, 12, 14, 18, 20, 23)
     private val reportedFlutterScopes = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
     private val reportedFlutterFilters = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+    private val adapterOwners = java.util.WeakHashMap<Any, java.lang.ref.WeakReference<Any>>()
+
+    fun rememberAdapter(fragment: Any?, adapter: Any?) {
+        if (fragment == null || adapter == null || adapter.javaClass.name != MORPHING_ADAPTER) return
+        synchronized(adapterOwners) { adapterOwners[adapter] = java.lang.ref.WeakReference(fragment) }
+    }
+
+    fun clearOwners() { synchronized(adapterOwners) { adapterOwners.clear() } }
+
+    fun isSelectionFragment(fragment: Any?): Boolean {
+        fragment ?: return false
+        if (fragment.javaClass.name != QDReaderHost.Classes.MORPHING_FRAGMENT) return false
+        val activity = invokeNoArg(fragment, "getActivity") ?: return false
+        if (activity.javaClass.name != QDReaderHost.Classes.MAIN_GROUP_ACTIVITY) return false
+        val parent = invokeNoArg(fragment, "getParentFragment") ?: return false
+        if (parent.javaClass.name != "com.qidian.QDReader.ui.fragment.QDStorePagerFragment") return false
+        // Host getSiteIdByType maps these four home tabs to the selection sites.
+        return (invokeNoArg(fragment, "getSiteId") as? Number)?.toInt() in setOf(0, 1, 2, 20)
+    }
 
     data class AdapterProcessResult(
         val replacementList: List<Any?>?,
@@ -630,7 +649,8 @@ object SelectionPageCustomization {
     private fun isSelectionAdapter(adapter: Any?): Boolean {
         adapter ?: return false
         if (adapter.javaClass.name != MORPHING_ADAPTER) return false
-        return invokeNoArg(adapter, "isFromMorphingFragment") == true
+        val owner = synchronized(adapterOwners) { adapterOwners[adapter]?.get() }
+        return isSelectionFragment(owner) && invokeNoArg(adapter, "isFromMorphingFragment") == true
     }
 
     private fun isMorphingCard(value: Any?): Boolean {

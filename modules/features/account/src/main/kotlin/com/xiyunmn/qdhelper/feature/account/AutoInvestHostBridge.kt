@@ -199,17 +199,19 @@ internal class AutoInvestHostBridge(private val classLoader: ClassLoader) {
     }
 
     private fun verificationOf(result: Any, riskEntry: Any): AutoInvestVerification? {
-        // Getter names belong to the host's VerifyResult Kotlin value object and are stable in the
-        // active audit interval. Validate sessionKey/banId against the readable risk
-        // entry before accepting the mapping; a future obfuscation drift therefore fails closed.
+        fun value(label: String): Any? {
+            val getter = resolve(AccountTargetKeys.verification.getValue(label)) ?: return null
+            if (!getter.declaringClass.isInstance(result)) return null
+            return FeatureHooks.invoke(getter, result)
+        }
         val verification = AutoInvestVerification(
-            sessionKey = invokeText(result, "b") ?: return null,
-            banId = invokeNumber(result, "search")?.toInt() ?: return null,
-            captchaTicket = invokeText(result, "c") ?: return null,
-            captchaRandStr = invokeText(result, "cihai") ?: return null,
-            challenge = invokeText(result, "judian") ?: return null,
-            validate = invokeText(result, "d") ?: return null,
-            seccode = invokeText(result, "a") ?: return null,
+            sessionKey = value("session") as? String ?: return null,
+            banId = (value("ban") as? Number)?.toInt() ?: return null,
+            captchaTicket = value("ticket") as? String ?: return null,
+            captchaRandStr = value("rand") as? String ?: return null,
+            challenge = value("challenge") as? String ?: return null,
+            validate = value("validate") as? String ?: return null,
+            seccode = value("seccode") as? String ?: return null,
         )
         val expectedSession = stringMember(riskEntry, "SessionKey", "getSessionKey") ?: return null
         val expectedBanId = numberMember(riskEntry, "BanId", "getBanId")?.toInt() ?: return null
@@ -332,14 +334,6 @@ internal class AutoInvestHostBridge(private val classLoader: ClassLoader) {
 
     private fun stringMember(target: Any, fieldName: String, getterName: String): String? =
         member(target, fieldName, getterName) as? String
-
-    private fun invokeText(target: Any, methodName: String): String? =
-        FeatureHooks.findDeclaredMethodOrNull(target.javaClass, methodName)
-            ?.let { FeatureHooks.invoke(it, target) as? String }
-
-    private fun invokeNumber(target: Any, methodName: String): Number? =
-        FeatureHooks.findDeclaredMethodOrNull(target.javaClass, methodName)
-            ?.let { FeatureHooks.invoke(it, target) as? Number }
 
     private fun resolve(key: TargetKey.MethodTarget): Method? =
         HostTargetResolver.resolveMethod(

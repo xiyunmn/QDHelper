@@ -107,6 +107,7 @@ internal object TargetQueryCatalog {
             AccountNetworkWelfareQueries.autoInvestLegacyRxAdapter,
             AccountNetworkWelfareQueries.autoInvestRequestApi,
             AccountNetworkWelfareQueries.autoInvestReaderBookId,
+            *com.xiyunmn.qdhelper.host.resolver.dexkit.query.RiskProofQueries.all.toTypedArray(),
             AccountNetworkWelfareQueries.qdUserManagerIsLoggedIn,
             AccountNetworkWelfareQueries.qdUserManagerUserId,
             AccountNetworkWelfareQueries.welfareFlutterMethodCall,
