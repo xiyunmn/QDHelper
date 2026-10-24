@@ -12,10 +12,37 @@ internal object AccountRequestLedger {
     fun reserveSignIn(context: Context, userId: Long, day: String): Boolean =
         update(context, userId, day) { state ->
             val attempts = state.getJSONObject("attempts")
+            if (state.optString("stopReason").isNotBlank()) return@update false
             if (attempts.has("request")) return@update false
             attempts.put("request", System.currentTimeMillis())
             true
         }
+
+    /** A daily opt-out is separate from a sent request and never marks the host checked in. */
+    fun stopSignIn(context: Context, userId: Long, day: String, reason: String): Boolean =
+        update(context, userId, day) { state -> state.put("stopReason", reason); true }
+
+    @Synchronized
+    fun signInStopReason(context: Context, userId: Long, day: String): String? {
+        require(userId > 0)
+        val directory = File(context.filesDir, "qdhelper/account-requests")
+        if (!directory.exists()) return null
+        RandomAccessFile(File(directory, "sign-in-$userId.lock"), "rw").use { handle ->
+            val lock = checkNotNull(handle.channel.tryLock()) { "Sign-in journal busy" }
+            lock.use {
+                val file = AtomicFile(File(directory, "sign-in-$userId.json"))
+                if (!file.baseFile.exists() && !File(file.baseFile.path + ".bak").exists()) return null
+                val state = JSONObject(file.openRead().use { it.readBytes().toString(Charsets.UTF_8) })
+                check(state.getInt("schema") == 1)
+                val savedDay = state.getString("day")
+                val attempts = state.getJSONObject("attempts")
+                if (day < savedDay) return "clock-rollback"
+                if (day != savedDay) return null
+                return state.optString("stopReason").takeIf { it.isNotBlank() }
+                    ?: if (attempts.has("request")) "request-reserved" else null
+            }
+        }
+    }
 
     @Synchronized
     private fun update(context: Context, userId: Long, day: String, change: (JSONObject) -> Boolean): Boolean =
@@ -39,14 +66,16 @@ internal object AccountRequestLedger {
                     val state = existing?.takeIf { it.getString("day") == day }
                         ?: JSONObject().put("schema", 1).put("day", day).put("attempts", JSONObject())
                     if (!change(state)) return@locked false
+                    val bytes = state.toString().toByteArray(Charsets.UTF_8)
                     val output = file.startWrite()
                     try {
-                        output.write(state.toString().toByteArray(Charsets.UTF_8))
+                        output.write(bytes)
                         file.finishWrite(output)
                     } catch (failure: Throwable) {
                         file.failWrite(output)
                         throw failure
                     }
+                    check(file.openRead().use { it.readBytes() }.contentEquals(bytes)) { "Sign-in journal readback failed" }
                     true
                 }
             }

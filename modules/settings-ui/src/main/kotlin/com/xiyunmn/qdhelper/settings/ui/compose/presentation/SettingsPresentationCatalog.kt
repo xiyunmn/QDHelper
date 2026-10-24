@@ -47,7 +47,7 @@ internal class SettingsPresentationCatalog(contributions: List<SettingsContribut
             listOf("enabled", "height", "width", "bottom-gap").map { "glass-bars.$place.$it" }
         } + listOf("blur", "refraction", "highlight", "shadow", "tilt", "animation", "base").map { "glass-bars.$it" }
         page("glass", "液态玻璃底栏", "interface", "三处独立尺寸，共用效果", glassRows.joinToString(" "))
-        page("page-customization", "页面自定义", "interface", "我的页 · 精选页 · 书籍详情，调整显示内容")
+        page("page-customization", "页面自定义", "interface", "我的页 · 精选页 · 书籍详情页，调整显示内容")
         page("mine", "我的页自定义", "page-customization", ids = "page-customization.mine page-customization.mine-auto-refresh")
         page("selection", "精选页自定义", "page-customization", ids = "page-customization.selection page-customization.selection-guess")
         page("detail-layout", "书籍详情页", "page-customization", ids = "page-customization.book_detail")

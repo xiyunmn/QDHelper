@@ -51,6 +51,7 @@ internal object WelfareRewardPopup {
             SettingIds.KEY_MODULE_ENABLED, SettingIds.KEY_WELFARE_REWARD_POPUP_SUPPRESS_ENABLED,
         )) { candidate.refresh() }
         runtime = candidate
+        candidate.restoreCurrentPage()
         return 1
     }
 
@@ -64,6 +65,14 @@ private class PopupRuntime(private val host: WelfareWebViewHost) : AutoCloseable
     var settings: AutoCloseable? = null
     @Volatile private var closed = false
     private var failureReported = false
+
+    fun restoreCurrentPage() {
+        handler.post {
+            if (closed) return@post
+            ActivityLifecycleCallbacks.currentActivities().filter { it.hasWindowFocus() }
+                .forEach { resume(it, "install") }
+        }
+    }
 
     fun resume(activity: Activity, reason: String = "resume") {
         handler.post {

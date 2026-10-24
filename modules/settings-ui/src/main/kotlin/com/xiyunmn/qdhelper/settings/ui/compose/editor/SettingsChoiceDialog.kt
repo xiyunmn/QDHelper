@@ -10,12 +10,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.xiyunmn.qdhelper.shared.compose.ModuleFloatingDialog
 import com.xiyunmn.qdhelper.settings.api.SettingsRow
+import com.xiyunmn.qdhelper.settings.api.SettingsFontChoiceController
 import com.xiyunmn.qdhelper.settings.ui.compose.component.ConsoleIconButton
 import com.xiyunmn.qdhelper.settings.ui.compose.state.SettingsController
 
 /** Compact choices float above the current page; only the option list scrolls. */
 @Composable
 internal fun SettingsChoiceDialog(row: SettingsRow, controller: SettingsController, onDismiss: () -> Unit) {
+    if (row is SettingsRow.DynamicChoice && row.controller is SettingsFontChoiceController) {
+        FontChoiceDialog(row, row.controller as SettingsFontChoiceController, controller, onDismiss)
+        return
+    }
     ModuleFloatingDialog(onDismissRequest = onDismiss) {
         BoxWithConstraints(Modifier.padding(8.dp), contentAlignment = Alignment.Center) {
             Surface(

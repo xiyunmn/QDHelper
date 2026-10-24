@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.xiyunmn.qdhelper.settings.api.SettingsRow
 import com.xiyunmn.qdhelper.settings.ui.compose.component.*
@@ -21,6 +22,7 @@ import com.xiyunmn.qdhelper.settings.ui.compose.navigation.LocalSettingsEntry
 import com.xiyunmn.qdhelper.settings.ui.compose.navigation.SettingsSearchResult
 import com.xiyunmn.qdhelper.settings.ui.compose.presentation.SettingsApplyPolicy
 import com.xiyunmn.qdhelper.settings.ui.compose.state.SettingsController
+import kotlinx.coroutines.flow.collect
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -36,12 +38,20 @@ internal fun SettingsApp(controller: SettingsController, installBack: ((() -> Un
     val searchFocus = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
     val selections = remember { SettingsSelections() }
-    val keyboardVisible = WindowInsets.isImeVisible
-    var keyboardWasVisible by remember { mutableStateOf(false) }
-    LaunchedEffect(keyboardVisible) {
-        if (keyboardWasVisible && !keyboardVisible) focusManager.clearFocus(force = true)
-        keyboardWasVisible = keyboardVisible
+    val keyboardVisible = rememberUpdatedState(WindowInsets.isImeVisible)
+    val ime = WindowInsets.ime
+    val imeTarget = WindowInsets.imeAnimationTarget
+    val density = LocalDensity.current
+    LaunchedEffect(ime, imeTarget, density, focusManager) {
+        var wasActive = false
+        snapshotFlow { keyboardVisible.value || ime.getBottom(density) > 0 || imeTarget.getBottom(density) > 0 }
+            .collect { active ->
+                // Visibility can turn false before the closing animation releases its insets.
+                if (wasActive && !active) focusManager.clearFocus(force = true)
+                wasActive = active
+            }
     }
+    val iconColors = remember(controller.catalog) { settingsIconColors(controller.catalog) }
     val dashboardScroll = if (query.isBlank()) entry.scroll else entry.searchScroll
     val searchCollapsed by remember(entry, dashboardScroll) {
         derivedStateOf { dashboardScroll.firstVisibleItemIndex > 0 }
@@ -67,7 +77,7 @@ internal fun SettingsApp(controller: SettingsController, installBack: ((() -> Un
         else controller.openRow(row)
     }
     val pending = SettingsApplyPolicy.pending(controller.catalog, controller::value)
-    CompositionLocalProvider(LocalSettingsSelections provides selections) {
+    CompositionLocalProvider(LocalSettingsSelections provides selections, LocalSettingsIconColors provides iconColors) {
     Scaffold(
         modifier = Modifier.dismissSelectionOnTap(selections),
         containerColor = MaterialTheme.colorScheme.background,

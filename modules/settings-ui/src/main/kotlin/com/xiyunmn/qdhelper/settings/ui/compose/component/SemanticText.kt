@@ -29,8 +29,9 @@ internal fun semanticColor(tone: SemanticTone): Color {
 }
 
 private val labelPattern = Regex("(?m)^(?=[^\\n:：]*[\\p{L}_])[^\\n:：]{1,22}[：:]")
-private val timePattern = Regex("(?<![\\d:])(?:[01]?\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d{1,3})?)?(?![\\d:])")
-private val metricPattern = Regex("\\d+(?:\\.\\d+)?\\s*(?:条|本|个|次|分钟|小时|秒|ms|KB|MB|%|倍|×)(?![A-Za-z])")
+private val timePattern = Regex("(?<![\\d:])(?:\\d{4}-[01]\\d-[0-3]\\d[ \\t]+)?(?:[01]?\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d{1,3})?)?(?![\\d:])")
+private val durationPattern = Regex("(?<![\\d.])\\d+(?:\\.\\d+)?[ \\t]*(?:小时|分钟|毫秒|分|秒|ms)(?:[ \\t]*\\d+(?:\\.\\d+)?[ \\t]*(?:小时|分钟|毫秒|分|秒|ms))*(?![A-Za-z])")
+private val metricPattern = Regex("\\d+(?:\\.\\d+)?[ \\t]*(?:条|本|个|次|KB|MB|%|倍|×)(?![A-Za-z])")
 private val successPattern = Regex("(?m)^(?:已解析|已执行预热|成功|已保存|已启用)(?=\\s|[：:·]|$)")
 private val warningPattern = Regex("(?m)^(?:未解析|尚未预热|未启用|未保存|草稿未保存|已取消|待核验)(?=\\s|[：:·]|$)")
 private val errorPattern = Regex("(?m)^(?:失败|解析失败|读取失败|保存失败|错误|不可用)(?=\\s|[：:·]|$)")
@@ -55,6 +56,7 @@ internal fun SemanticText(text: String, modifier: Modifier = Modifier, style: Te
             }
             mark(labelPattern, info)
             mark(metricPattern, info)
+            mark(durationPattern, info)
             mark(timePattern, info)
             mark(successPattern, success)
             mark(warningPattern, warning)

@@ -26,6 +26,10 @@ import com.xiyunmn.qdhelper.settings.ui.compose.presentation.SettingsPageBlock
 import com.xiyunmn.qdhelper.settings.ui.compose.presentation.settingsPageBlocks
 import com.xiyunmn.qdhelper.settings.ui.compose.presentation.startupInputGroups
 import com.xiyunmn.qdhelper.settings.ui.compose.row.SettingsRowRenderer
+import com.xiyunmn.qdhelper.settings.ui.compose.row.GroupedFeatureSetting
+import com.xiyunmn.qdhelper.settings.ui.compose.row.GroupedReadingNotes
+import com.xiyunmn.qdhelper.settings.ui.compose.row.groupedFeatureRows
+import com.xiyunmn.qdhelper.settings.ui.compose.row.groupedReadingNotes
 import com.xiyunmn.qdhelper.settings.ui.compose.state.SettingsController
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -112,8 +116,10 @@ internal fun SettingsPage(entry: SettingsEntry, controller: SettingsController, 
                             }
                         }
                         "backup" -> ConsoleSurface {
-                            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Column {
                                 GroupHeading("配置与规则", "backup")
+                                Column(Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 catalog.rowsFor("backup").chunked(2).forEach { pair ->
                                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                         pair.forEach { row ->
@@ -126,6 +132,7 @@ internal fun SettingsPage(entry: SettingsEntry, controller: SettingsController, 
                                                 tone = if (row.id.contains("import")) SemanticTone.Accent else SemanticTone.Info)
                                         }
                                     }
+                                }
                                 }
                             }
                         }
@@ -165,7 +172,10 @@ private fun SettingsGroup(block: SettingsPageBlock, entry: SettingsEntry, contro
     val logActions = visible.filter { it.id in setOf("diagnostics.export-logs", "diagnostics.clear-logs") }
     val groupedInputs = startupInputGroups.filterKeys { parent -> visible.any { it.id == parent } }
     val inputIds = groupedInputs.values.flatten().toSet()
-    val rendered = visible.filterNot { it.id in inputIds || albumActions.size == 2 && it.id == "startup.local-clear" ||
+    val featureGroups = groupedFeatureRows.filterKeys { parent -> visible.any { it.id == parent } }
+    val childIds = featureGroups.values.flatten().toSet()
+    val notes = visible.filterIsInstance<SettingsRow.Hint>().filter { it.id in groupedReadingNotes }
+    val rendered = visible.filterNot { it.id in childIds || it.id in groupedReadingNotes || it.id in inputIds || albumActions.size == 2 && it.id == "startup.local-clear" ||
         logActions.size == 2 && it.id == "diagnostics.clear-logs" }
     ConsoleSurface {
         Column {
@@ -174,8 +184,9 @@ private fun SettingsGroup(block: SettingsPageBlock, entry: SettingsEntry, contro
                 ConsoleIcon(if (expanded) "up" else "down", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             else if (block.title.isNotBlank()) {
-                if (block.rows.size > block.previewRows) GroupHeading(block.title, entry.destination, expanded) { entry.expanded[block.id] = !expanded }
-                else GroupHeading(block.title, entry.destination)
+                val headingIcon = if (block.id == "group:probes") "probes" else entry.destination
+                if (block.rows.size > block.previewRows) GroupHeading(block.title, headingIcon, expanded) { entry.expanded[block.id] = !expanded }
+                else GroupHeading(block.title, headingIcon)
             }
             if (quickRules && expanded) QuickRulesHint()
             block.links.forEach { id ->
@@ -204,14 +215,24 @@ private fun SettingsGroup(block: SettingsPageBlock, entry: SettingsEntry, contro
                         }
                     }
                     Box(Modifier.fillMaxWidth().bringIntoViewRequester(requester).settingsFocusHighlight(focused)) {
-                        if (inputs.isNotEmpty()) StartupImageSetting(row as SettingsRow.Toggle, inputs, controller)
+                        if (row.id in featureGroups) GroupedFeatureSetting(row,
+                            featureGroups.getValue(row.id).mapNotNull { id -> visible.firstOrNull { it.id == id } }, controller, edit)
+                        else if (inputs.isNotEmpty()) StartupImageSetting(row as SettingsRow.Toggle, inputs, controller)
                         else if (row.id == "diagnostics.export-logs") LogFileActions(actions, edit)
                         else if (actions.isNotEmpty()) StartupImageActions(actions, controller, edit)
                         else if (quickRules) Column { InlineTextSetting(row, controller, true, null, null, null, alwaysExpanded = true, compact = true) }
                         else SettingsRowRenderer(row, controller, edit)
                     }
-                    if (index != rendered.lastIndex) HorizontalDivider(Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .4f))
+                    val nextRowId = rendered.getOrNull(index + 1)?.id
+                    val startupChild = row.id == "startup.dark-logo" && nextRowId == "startup.sync" ||
+                        row.id == "startup.local-enabled" && nextRowId == "startup.local-pick"
+                    if (nextRowId != null && !startupChild) HorizontalDivider(Modifier.padding(horizontal = 16.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .4f))
                 }
+            }
+            if (notes.isNotEmpty()) {
+                HorizontalDivider(Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .4f))
+                GroupedReadingNotes(notes)
             }
             if (!quickRules && !expanded && block.rows.size > block.previewRows) {
                 TextButton({ entry.expanded[block.id] = true }, Modifier.fillMaxWidth()) {

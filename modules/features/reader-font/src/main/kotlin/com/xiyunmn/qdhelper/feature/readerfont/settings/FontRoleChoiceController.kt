@@ -2,18 +2,40 @@ package com.xiyunmn.qdhelper.feature.readerfont.settings
 
 import android.app.Activity
 import android.content.Context
+import android.graphics.Typeface
 import com.xiyunmn.qdhelper.feature.readerfont.ui.CustomReaderFontPanelInjector
-import com.xiyunmn.qdhelper.settings.api.SettingsDynamicChoiceController
+import com.xiyunmn.qdhelper.settings.api.SettingsFontChoiceController
+import com.xiyunmn.qdhelper.settings.api.SettingsFontPreview
 import com.xiyunmn.qdhelper.settings.api.SettingsDynamicChoiceItem
 import com.xiyunmn.qdhelper.settings.api.SettingsManagedListActionResult
 import com.xiyunmn.qdhelper.shared.fonts.FontLibraryStore
 import com.xiyunmn.qdhelper.shared.fonts.FontRole
 import com.xiyunmn.qdhelper.shared.fonts.FontSelectionStore
+import com.xiyunmn.qdhelper.shared.fonts.FontTypefaceCache
 import java.io.File
 
 internal class FontRoleChoiceController(
     private val role: FontRole,
-) : SettingsDynamicChoiceController {
+) : SettingsFontChoiceController {
+    override val defaultTitle: String get() = when (role) {
+        FontRole.READER -> "使用起点阅读字体"
+        FontRole.GLOBAL_REGULAR -> "不替换界面字体"
+        FontRole.GLOBAL_EMPHASIS -> "跟随界面常规字体"
+    }
+    override val defaultSummary: String get() = when (role) {
+        FontRole.READER -> "使用阅读器中选择的字体"
+        FontRole.GLOBAL_REGULAR -> "保留起点原有字体"
+        FontRole.GLOBAL_EMPHASIS -> "沿用常规字体，保留强调字重"
+    }
+
+    override fun preview(context: Context, key: String?): SettingsFontPreview {
+        val path = key ?: if (role == FontRole.GLOBAL_EMPHASIS) {
+            FontSelectionStore.selectedPath(context, FontRole.GLOBAL_REGULAR).takeIf(String::isNotBlank)
+        } else null
+        if (path == null) return SettingsFontPreview()
+        val face = FontTypefaceCache.load(path, if (role == FontRole.GLOBAL_EMPHASIS) Typeface.BOLD else null)
+        return SettingsFontPreview(face, if (face == null) "字体无法加载，请返回字体库检查文件" else null)
+    }
     override fun items(context: Context): List<SettingsDynamicChoiceItem> =
         FontLibraryStore.readFonts(context).map { path ->
             SettingsDynamicChoiceItem(

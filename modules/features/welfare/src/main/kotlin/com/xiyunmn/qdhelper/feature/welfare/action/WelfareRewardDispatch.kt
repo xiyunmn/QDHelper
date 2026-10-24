@@ -4,6 +4,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Pair
 import com.xiyunmn.qdhelper.feature.api.runtime.FeatureHooks
+import com.xiyunmn.qdhelper.feature.api.runtime.FeatureResources
 import com.xiyunmn.qdhelper.feature.welfare.model.findField
 import com.xiyunmn.qdhelper.feature.welfare.model.findMethod
 import com.xiyunmn.qdhelper.feature.welfare.model.readFieldByType
@@ -12,6 +13,28 @@ import com.xiyunmn.qdhelper.feature.welfare.model.readObjectField
 import com.xiyunmn.qdhelper.host.api.symbol.HostSymbols as QDReaderHost
 import java.util.concurrent.TimeUnit
 import org.json.JSONObject
+
+/** Pending synthetic callbacks belong to one module load, not to the host process. */
+internal object WelfareRewardDispatch {
+    private val handler = Handler(Looper.getMainLooper())
+    private val lock = Any()
+    @Volatile private var closed = false
+
+    init {
+        FeatureResources.register("welfare-reward-dispatch") {
+            synchronized(lock) {
+                closed = true
+                handler.removeCallbacksAndMessages(null)
+            }
+        }
+    }
+
+    fun post(delayMs: Long = 0L, action: () -> Unit) {
+        synchronized(lock) {
+            if (!closed) handler.postDelayed({ if (!closed) action() }, delayMs)
+        }
+    }
+}
 
 internal fun Any?.writeObjectField(name: String, value: Any?) {
     this ?: return
@@ -36,15 +59,13 @@ internal fun Any?.sendFlutterSuccess(value: Any?) {
 internal fun Any?.dispatchQqMiniRewardCallbacks(compId: String?) {
     this ?: return
     val listener = readObjectField("mListener") ?: return
-    val handler = Handler(Looper.getMainLooper())
-    handler.post {
+    WelfareRewardDispatch.post {
         listener.invokeNoArgVoidMethod("onADShow")
-        handler.postDelayed({ listener.invokeNoArgVoidMethod("onReward") }, QQMINI_REWARD_EVENT_DELAY_MS)
-        handler.postDelayed({ listener.invokeNoArgVoidMethod("onVideoComplete") }, QQMINI_COMPLETE_EVENT_DELAY_MS)
-        handler.postDelayed(
-            { listener.invokeSingleArgVoidMethod("onADClose", String::class.java, compId) },
-            QQMINI_CLOSE_EVENT_DELAY_MS,
-        )
+        WelfareRewardDispatch.post(QQMINI_REWARD_EVENT_DELAY_MS) { listener.invokeNoArgVoidMethod("onReward") }
+        WelfareRewardDispatch.post(QQMINI_COMPLETE_EVENT_DELAY_MS) { listener.invokeNoArgVoidMethod("onVideoComplete") }
+        WelfareRewardDispatch.post(QQMINI_CLOSE_EVENT_DELAY_MS) {
+            listener.invokeSingleArgVoidMethod("onADClose", String::class.java, compId)
+        }
     }
 }
 
@@ -56,26 +77,22 @@ internal fun Any?.dispatchTangramRewardCallbacks() {
             return
         }
     val hostClassLoader = javaClass.classLoader ?: return
-    val handler = Handler(Looper.getMainLooper())
-    handler.post {
+    WelfareRewardDispatch.post {
         listener.invokeNoArgVoidMethod("onADShow")
-        handler.postDelayed(
-            {
-                val rewardResult = runCatching {
-                    val rewardClass = FeatureHooks.findClassOrNull(QDReaderHost.Classes.TANGRAM_REWARD_RESULT, hostClassLoader)
-                        ?: return@runCatching null
-                    val constructor = FeatureHooks.findConstructorOrNull(rewardClass) ?: return@runCatching null
-                    FeatureHooks.newInstance(constructor)
-                }.getOrNull()
-                if (rewardResult != null) {
-                    listener.invokeSingleArgVoidMethod("onReward", rewardResult.javaClass, rewardResult)
-                }
-                listener.invokeNoArgVoidMethod("onReward")
-            },
-            TANGRAM_REWARD_EVENT_DELAY_MS,
-        )
-        handler.postDelayed({ listener.invokeNoArgVoidMethod("onADComplete") }, TANGRAM_COMPLETE_EVENT_DELAY_MS)
-        handler.postDelayed({ listener.invokeNoArgVoidMethod("onADClose") }, TANGRAM_CLOSE_EVENT_DELAY_MS)
+        WelfareRewardDispatch.post(TANGRAM_REWARD_EVENT_DELAY_MS) {
+            val rewardResult = runCatching {
+                val rewardClass = FeatureHooks.findClassOrNull(QDReaderHost.Classes.TANGRAM_REWARD_RESULT, hostClassLoader)
+                    ?: return@runCatching null
+                val constructor = FeatureHooks.findConstructorOrNull(rewardClass) ?: return@runCatching null
+                FeatureHooks.newInstance(constructor)
+            }.getOrNull()
+            if (rewardResult != null) {
+                listener.invokeSingleArgVoidMethod("onReward", rewardResult.javaClass, rewardResult)
+            }
+            listener.invokeNoArgVoidMethod("onReward")
+        }
+        WelfareRewardDispatch.post(TANGRAM_COMPLETE_EVENT_DELAY_MS) { listener.invokeNoArgVoidMethod("onADComplete") }
+        WelfareRewardDispatch.post(TANGRAM_CLOSE_EVENT_DELAY_MS) { listener.invokeNoArgVoidMethod("onADClose") }
     }
 }
 
@@ -123,29 +140,25 @@ internal fun Any?.dispatchH5RewardStatusSequence(
     extraFields: Map<String, Any?> = emptyMap(),
 ) {
     this ?: return
-    val handler = Handler(Looper.getMainLooper())
     H5_REWARD_STATUS_SEQUENCE.forEachIndexed { index, status ->
         val delayMs = H5_REWARD_STATUS_DELAYS_MS.getOrElse(index) { 0L }
-        handler.postDelayed(
-            {
-                runCatching {
-                    val payload = JSONObject()
-                    payload.put(statusField, status)
-                    extraFields.forEach { (key, value) ->
-                        if (value != null) {
-                            payload.put(key, value)
-                        }
+        WelfareRewardDispatch.post(delayMs) {
+            runCatching {
+                val payload = JSONObject()
+                payload.put(statusField, status)
+                extraFields.forEach { (key, value) ->
+                    if (value != null) {
+                        payload.put(key, value)
                     }
-                    invokeJudianExecCallback(payload, callbackId)
-                }.onFailure { throwable ->
-                    FeatureHooks.e(
-                        "Welfare H5 reward callback dispatch failed: callbackId=$callbackId, status=$status",
-                        throwable,
-                    )
                 }
-            },
-            delayMs,
-        )
+                invokeJudianExecCallback(payload, callbackId)
+            }.onFailure { throwable ->
+                FeatureHooks.e(
+                    "Welfare H5 reward callback dispatch failed: callbackId=$callbackId, status=$status",
+                    throwable,
+                )
+            }
+        }
     }
 }
 

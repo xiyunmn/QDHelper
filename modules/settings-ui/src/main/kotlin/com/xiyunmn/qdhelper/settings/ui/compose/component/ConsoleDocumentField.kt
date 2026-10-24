@@ -1,6 +1,5 @@
 package com.xiyunmn.qdhelper.settings.ui.compose.component
 
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -19,7 +18,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
@@ -31,7 +29,7 @@ import kotlinx.coroutines.delay
 import kotlin.math.ceil
 
 /** A stable document frame with explicit caret-aware scrolling inside the IME-safe viewport. */
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
 @Composable
 internal fun ConsoleDocumentField(
     state: TextFieldState,
@@ -47,6 +45,7 @@ internal fun ConsoleDocumentField(
     var textLayout by remember { mutableStateOf<(() -> TextLayoutResult?)?>(null) }
     val density = LocalDensity.current
     val imeBottom = WindowInsets.ime.getBottom(density)
+    val imeTargetBottom = WindowInsets.imeAnimationTarget.getBottom(density)
     val margin = with(density) { 24.dp.roundToPx() }
     val text = state.text.toString()
     val selection = state.selection
@@ -59,8 +58,8 @@ internal fun ConsoleDocumentField(
             }
         }
     }
-    LaunchedEffect(focused, imeBottom, viewportHeight, selection, text) {
-        if (focused && imeBottom > 0 && viewportHeight > 0) {
+    LaunchedEffect(focused, imeBottom, imeTargetBottom, viewportHeight, selection, text) {
+        if (focused && imeBottom > 0 && imeTargetBottom > 0 && viewportHeight > 0) {
             // Wait for the final IME/layout geometry, then reveal the active selection edge.
             // Scroll position is deliberately not an effect key: manual scrolling stays free.
             delay(100)
@@ -71,10 +70,9 @@ internal fun ConsoleDocumentField(
             if (target != scroll.value) scroll.animateScrollTo(target, tween(180))
         }
     }
-    val shape = RoundedCornerShape(14.dp)
-    val base = lerp(colors.surfaceContainerLow, colors.onSurface, .025f)
-    val container by animateColorAsState(if (focused) lerp(base, colors.primary, .025f) else base, label = "document-glow")
-    Column(modifier.clip(shape).background(container).border(1.dp, colors.outlineVariant.copy(alpha = .5f), shape)) {
+    val shape = RoundedCornerShape(12.dp)
+    val container = if (enabled) colors.surfaceContainerLowest else colors.surfaceContainerHigh.copy(alpha = .25f)
+    Column(modifier.clip(shape).background(container).border(1.dp, consoleInputBorder(focused, enabled), shape)) {
         // Account for the frame's actual bottom position before applying keyboard insets.
         // Otherwise its page margin plus inner padding form an opaque strip above the IME.
         Column(Modifier.fillMaxSize().recalculateWindowInsets().imePadding()

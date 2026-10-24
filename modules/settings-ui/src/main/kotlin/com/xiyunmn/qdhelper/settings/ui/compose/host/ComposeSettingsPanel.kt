@@ -93,7 +93,9 @@ internal object ComposeSettingsPanel {
         view.installModuleWatermark()
         owner.attach(dialog.window!!.decorView)
         dialog.setCanceledOnTouchOutside(false)
-        dialog.window!!.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
+        // Match edge-to-edge Compose dialogs: only one layer owns the animated IME space.
+        dialog.window!!.setSoftInputMode(if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S)
+            WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING else WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
         dialog.window!!.apply {
             setDecorFitsSystemWindowsCompat(false)
             addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)

@@ -238,13 +238,11 @@ internal object FeatureCatalogComposition {
             ) { DeviceIdentityProbeFeature },
             row(
                 "welfare.action",
-                hotReloadable = false,
                 requiredTargets = WelfareTargetKeys.all.mapTo(linkedSetOf()) { it.id },
                 enabled = SettingsRuntime::isAnyWelfareActionEnabled,
             ) { WelfareRewardActionFeature },
             row(
                 "welfare.probe",
-                hotReloadable = false,
                 requiredTargets = WelfareTargetKeys.all.mapTo(linkedSetOf()) { it.id },
                 enabled = { context ->
                     !SettingsRuntime.isAnyWelfareActionEnabled(context) &&

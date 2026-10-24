@@ -18,6 +18,7 @@ import androidx.compose.foundation.text.selection.rememberSelectionState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
@@ -119,34 +120,34 @@ internal fun CopyDialogContent(
         // Window constraints, rather than physical display size, also cover split-screen/rotation.
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             Surface(
-                modifier = Modifier.fillMaxWidth().padding(8.dp).heightIn(max = (maxHeight - 16.dp).coerceAtLeast(120.dp))
+                modifier = Modifier.fillMaxWidth().padding(8.dp).heightIn(max = maxHeight * .72f)
                     .clearCopySelectionOnTap(selection),
                 shape = RoundedCornerShape(24.dp),
                 border = BorderStroke(1.dp, colors.outlineVariant),
                 shadowElevation = 6.dp,
             ) {
-                Column(Modifier.padding(18.dp)) {
-                    Text(title, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-                    Spacer(Modifier.height(14.dp))
-                    Surface(
-                        modifier = Modifier.fillMaxWidth().weight(1f, fill = false),
-                        color = colors.surfaceContainer, shape = RoundedCornerShape(14.dp),
-                    ) {
-                        SelectionContainer(state = selection) {
-                            Text(
-                                text, fontSize = 15.sp, lineHeight = 24.sp,
-                                modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(14.dp),
-                            )
-                        }
+                Column {
+                    Row(Modifier.fillMaxWidth().padding(start = 18.dp, end = 6.dp, top = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        Text(title, Modifier.weight(1f), fontSize = 18.sp, fontWeight = FontWeight.SemiBold,
+                            color = colors.onSurface)
+                        TextButton(onClick = dismiss, colors = ButtonDefaults.textButtonColors(contentColor = colors.onSurfaceVariant)) { Text("关闭") }
                     }
-                    Spacer(Modifier.height(14.dp))
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        OutlinedButton(
-                            onClick = dismiss, modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.onSurfaceVariant),
-                            border = BorderStroke(1.dp, colors.outlineVariant),
-                        ) { Text("取消") }
-                        Button(onClick = copyAll, modifier = Modifier.weight(1f)) { Text("复制全文") }
+                    SelectionContainer(state = selection, modifier = Modifier.fillMaxWidth().weight(1f, fill = false)) {
+                            Text(
+                                text, fontSize = 15.sp, lineHeight = 23.sp, color = colors.onSurface,
+                                modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
+                                    .padding(horizontal = 18.dp, vertical = 8.dp),
+                            )
+                    }
+                    Row(Modifier.fillMaxWidth().padding(start = 18.dp, end = 18.dp, top = 2.dp, bottom = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text("长按选择文字", Modifier.weight(1f), fontSize = 12.sp, color = colors.onSurfaceVariant)
+                        FilledTonalButton(onClick = copyAll, shape = RoundedCornerShape(12.dp),
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                            colors = ButtonDefaults.filledTonalButtonColors(containerColor = colors.primaryContainer, contentColor = colors.primary)) {
+                            Text("复制全文", fontSize = 13.sp)
+                        }
                     }
                 }
             }

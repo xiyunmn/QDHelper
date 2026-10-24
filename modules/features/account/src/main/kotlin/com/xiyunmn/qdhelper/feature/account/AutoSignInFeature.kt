@@ -18,6 +18,7 @@ import com.xiyunmn.qdhelper.host.api.symbol.HostSymbols as QDReaderHost
 import com.xiyunmn.qdhelper.foundation.runtime.HostSessionStore
 import com.xiyunmn.qdhelper.config.SettingsRuntime
 import com.xiyunmn.qdhelper.feature.api.runtime.HookModule
+import com.xiyunmn.qdhelper.hook.concurrency.ManagedExecutor
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -33,7 +34,10 @@ object AutoSignInFeature : InstallableFeature {
 
     private val membershipUnavailableReported = AtomicBoolean(false)
     private val pendingAttempts = ConcurrentHashMap.newKeySet<String>()
+    private val stoppedDays = ConcurrentHashMap<Long, String>()
+    private val retryAfter = ConcurrentHashMap<String, Long>()
     private val activeSubscriptions = ConcurrentHashMap.newKeySet<Any>()
+    private var worker = ManagedExecutor("account.auto-sign-in", "QDHelper-AutoSignIn")
     private val mainHandler = Handler(Looper.getMainLooper())
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply {
         timeZone = TimeZone.getTimeZone("Asia/Shanghai")
@@ -47,9 +51,12 @@ object AutoSignInFeature : InstallableFeature {
         FeatureResources.register("AutoSignInFeature") {
             mainHandler.removeCallbacksAndMessages(null)
             pendingAttempts.clear()
+            stoppedDays.clear()
+            retryAfter.clear()
             membershipUnavailableReported.set(false)
             activeSubscriptions.forEach(::disposeSubscription)
             activeSubscriptions.clear()
+            worker.close()
             synchronized(lifecycleSubscriptions) {
                 lifecycleSubscriptions.forEach { runCatching(it::close) }
                 lifecycleSubscriptions.clear()
@@ -65,6 +72,8 @@ object AutoSignInFeature : InstallableFeature {
         processName: String,
         phase: String,
     ) {
+        if (!QDReaderHost.isMainProcess(processName)) return
+        if (worker.isClosed) worker = ManagedExecutor("account.auto-sign-in", "QDHelper-AutoSignIn")
         activeClassLoader = classLoader
         subscribeActivityCallbacks()
         mainHandler.post {
@@ -112,30 +121,66 @@ object AutoSignInFeature : InstallableFeature {
             return
         }
         val today = currentDay()
-        if (SettingsRuntime.hasAutoSignInAttempted(context, userId, today)) {
+        if (stoppedDays[userId]?.let { today <= it } == true ||
+            SettingsRuntime.hasAutoSignInAttempted(context, userId, today)) {
             return
         }
         val attemptKey = "$userId:$today"
+        if (android.os.SystemClock.elapsedRealtime() < (retryAfter[attemptKey] ?: 0L)) return
         if (!pendingAttempts.add(attemptKey)) {
             return
         }
-        mainHandler.postDelayed({
-            runCatching {
-                launchCheckInRequest(
-                    activity = activity,
-                    context = context,
-                    classLoader = classLoader,
-                    userId = userId,
-                    today = today,
-                    reason = reason,
-                    attemptKey = attemptKey,
-                )
-            }.onFailure { throwable ->
-                pendingAttempts.remove(attemptKey)
-                FeatureHooks.e("Auto sign-in check-in request failed to launch", throwable)
-                showToast(activity, context, "自动签到发起失败，请稍后手动重试", Toast.LENGTH_LONG)
-            }
-        }, 1200L)
+        checkDailyState(context, classLoader, userId, today, attemptKey) {
+            mainHandler.postDelayed({
+                runCatching {
+                    launchCheckInRequest(
+                        activity = activity,
+                        context = context,
+                        classLoader = classLoader,
+                        userId = userId,
+                        today = today,
+                        reason = reason,
+                        attemptKey = attemptKey,
+                    )
+                }.onFailure { throwable ->
+                    pendingAttempts.remove(attemptKey)
+                    FeatureHooks.e("Auto sign-in check-in request failed to launch", throwable)
+                    showToast(activity, context, "自动签到发起失败，请稍后手动重试", Toast.LENGTH_LONG)
+                }
+            }, 1200L)
+        }
+    }
+
+    private fun checkDailyState(context: Context, classLoader: ClassLoader, userId: Long,
+        day: String, attemptKey: String, proceed: () -> Unit) {
+        // Restore the daily decision before scheduling another attempt.
+        if (!worker.execute {
+            val result = runCatching { AccountRequestLedger.signInStopReason(context, userId, day) }
+            if (!mainHandler.post {
+                if (!isCurrentAttempt(context, classLoader, userId, day)) {
+                    pendingAttempts.remove(attemptKey)
+                    return@post
+                }
+                if (result.isFailure) {
+                    retryAfter[attemptKey] = android.os.SystemClock.elapsedRealtime() + 30_000
+                    pendingAttempts.remove(attemptKey)
+                    FeatureHooks.w("Auto sign-in day state unavailable; retry deferred")
+                } else if (result.getOrNull() != null) {
+                    stoppedDays[userId] = day
+                    pendingAttempts.remove(attemptKey)
+                    FeatureHooks.i("Auto sign-in daily stop restored: reason=${result.getOrNull()}")
+                } else {
+                    retryAfter.remove(attemptKey)
+                    proceed()
+                }
+            }) pendingAttempts.remove(attemptKey)
+        }) pendingAttempts.remove(attemptKey)
+    }
+
+    private fun stopToday(context: Context, userId: Long, day: String, reason: String) {
+        stoppedDays[userId] = day
+        if (!AccountRequestLedger.stopSignIn(context, userId, day, reason))
+            FeatureHooks.w("Auto sign-in daily stop persistence failed; stopped for this process: reason=$reason")
     }
 
     private fun launchCheckInRequest(
@@ -167,8 +212,9 @@ object AutoSignInFeature : InstallableFeature {
             FeatureHooks.w("Auto sign-in membership eligibility unavailable; continuing normal check-in")
         }
         if (membershipEligible == true) {
+            stopToday(context, userId, today, "membership-auto-sign-in")
             pendingAttempts.remove(attemptKey)
-            FeatureHooks.i("Auto sign-in skipped: host membership auto-sign-in eligible")
+            FeatureHooks.i("Auto sign-in stopped for today: host membership auto-sign-in eligible")
             return
         }
         if (isHostAlreadyCheckedIn(manager)) {
@@ -186,9 +232,11 @@ object AutoSignInFeature : InstallableFeature {
             ?: error("check-in observable method not found")
         if (SettingsRuntime.hasAutoSignInAttempted(context, userId, today) ||
             !AccountRequestLedger.reserveSignIn(context, userId, today)) {
+            stoppedDays[userId] = today
             pendingAttempts.remove(attemptKey)
             return
         }
+        stoppedDays[userId] = today
         val requestObservable = FeatureHooks.invoke(observable, manager, activity)
             ?: error("check-in observable is null")
         val request = composeNetworkSchedulerIfAvailable(requestObservable, classLoader)
@@ -361,6 +409,7 @@ object AutoSignInFeature : InstallableFeature {
     }
 
     private fun markAttempt(context: Context, userId: Long, today: String, source: String) {
+        stopToday(context, userId, today, "completed")
         if (!SettingsRuntime.markAutoSignInAttempt(context, userId, today)) {
             FeatureHooks.w("Auto sign-in $source but failed to persist attempt marker")
         }

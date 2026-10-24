@@ -71,7 +71,7 @@ private fun TextEditor(row: SettingsRow, controller: SettingsController) {
                 else -> Unit
             }
         }, Modifier.fillMaxWidth().then(if (!single) Modifier.weight(1f) else Modifier),
-            label = { Text(row.title) }, placeholder = { Text(hint) }, singleLine = single, isError = invalid,
+            label = { Text(row.title) }, placeholder = { Text(hint) }, singleLine = single, isError = invalid, fillHeight = !single,
             supportingText = { Text(if (invalid) "格式不正确；尚未保存此输入" else "修改自动保存") })
     }
 }

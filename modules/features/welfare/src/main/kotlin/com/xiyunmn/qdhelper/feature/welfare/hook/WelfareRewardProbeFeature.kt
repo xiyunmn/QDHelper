@@ -14,6 +14,7 @@ import com.xiyunmn.qdhelper.feature.welfare.action.dispatchQqMiniRewardCallbacks
 import com.xiyunmn.qdhelper.feature.welfare.action.dispatchTangramRewardCallbacks
 import com.xiyunmn.qdhelper.feature.welfare.action.sendFlutterSuccess
 import com.xiyunmn.qdhelper.feature.welfare.action.writeObjectField
+import com.xiyunmn.qdhelper.feature.welfare.action.WelfareRewardDispatch
 import com.xiyunmn.qdhelper.feature.welfare.model.browserIntentSummary
 import com.xiyunmn.qdhelper.feature.welfare.model.contextLabel
 import com.xiyunmn.qdhelper.feature.welfare.model.flutterArgsSummary
@@ -56,6 +57,9 @@ object WelfareRewardProbeFeature : InstallableFeature {
             }
             recentWelfareBrowserActivityRef = null
             currentActivityRef = null
+            recentWelfareBrowserResumeAtMs.set(0L)
+            activeInstallMode = WelfareRewardInstallMode.PROBE_ONLY
+            hitCounters.clear()
         }
     }
 
@@ -132,24 +136,30 @@ object WelfareRewardProbeFeature : InstallableFeature {
         ActivityLifecycleCallbacks.subscribe(
             owner = OwnerId("welfare"),
             id = "welfare.browser.activity.onResume",
-            resumed = { activity ->
-                currentActivityRef = WeakReference(activity)
-                if (activity.javaClass.name == QDReaderHost.Classes.QD_BROWSER_ACTIVITY) {
-                    if (activity.intent.isLikelyWelfareBrowserIntent()) {
-                        recentWelfareBrowserResumeAtMs.set(System.currentTimeMillis())
-                        recentWelfareBrowserActivityRef = WeakReference(activity)
-                    }
-                    logLifecycleHit("welfare.browser.activity.onResume", "activity=QDBrowserActivity")
-                }
-                if (activity.javaClass.name == QDReaderHost.Classes.TANGRAM_REWARD_VIDEO_ACTIVITY) {
-                    logLifecycleHit(
-                        "welfare.rewardVideo.activity.onResume",
-                        "activity=TangramRewardVideoActivity",
-                    )
-                }
-            },
+            resumed = ::rememberResumedActivity,
         )?.let(lifecycleSubscriptions::add)
+        WelfareRewardDispatch.post {
+            ActivityLifecycleCallbacks.currentActivities().firstOrNull { it.hasWindowFocus() }
+                ?.let(::rememberResumedActivity)
+        }
         lifecycleSubscriptions.size
+    }
+
+    private fun rememberResumedActivity(activity: Activity) {
+        currentActivityRef = WeakReference(activity)
+        if (activity.javaClass.name == QDReaderHost.Classes.QD_BROWSER_ACTIVITY) {
+            if (activity.intent.isLikelyWelfareBrowserIntent()) {
+                recentWelfareBrowserResumeAtMs.set(System.currentTimeMillis())
+                recentWelfareBrowserActivityRef = WeakReference(activity)
+            }
+            logLifecycleHit("welfare.browser.activity.onResume", "activity=QDBrowserActivity")
+        }
+        if (activity.javaClass.name == QDReaderHost.Classes.TANGRAM_REWARD_VIDEO_ACTIVITY) {
+            logLifecycleHit(
+                "welfare.rewardVideo.activity.onResume",
+                "activity=TangramRewardVideoActivity",
+            )
+        }
     }
 
     private fun installWelfareMethodCallProbe(

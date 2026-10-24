@@ -30,19 +30,21 @@ internal fun SettingLine(
     badgeColor: Color? = null,
     semanticSummary: Boolean = false,
     leading: @Composable (() -> Unit)? = null,
+    compact: Boolean = false,
     trailing: @Composable (() -> Unit)? = null,
 ) {
     Row(
         Modifier.fillMaxWidth().alpha(if (enabled) 1f else .46f)
             .then(if (onClick != null) Modifier.clickable(enabled = enabled, onClick = onClick) else Modifier)
-            .heightIn(min = 64.dp).padding(horizontal = 16.dp, vertical = 11.dp),
+            .heightIn(min = if (compact) 52.dp else 64.dp)
+            .padding(horizontal = if (compact) 14.dp else 16.dp, vertical = if (compact) 8.dp else 11.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         leading?.invoke()
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                Text(title, Modifier.weight(1f, fill = false), fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                Text(title, Modifier.weight(1f, fill = false), fontSize = if (compact) 14.sp else 16.sp, fontWeight = FontWeight.Medium)
                 if (!badge.isNullOrEmpty()) Surface(color = badgeColor?.copy(alpha = .12f) ?: MaterialTheme.colorScheme.surfaceContainerHigh, shape = RoundedCornerShape(5.dp)) {
                     Text(badge, Modifier.padding(horizontal = 5.dp, vertical = 2.dp), fontSize = 10.sp, color = badgeColor ?: MaterialTheme.colorScheme.onSurfaceVariant)
                 }
@@ -86,16 +88,6 @@ internal fun ConsoleSurface(modifier: Modifier = Modifier, content: @Composable 
 }
 
 @Composable
-internal fun categoryAccent(id: String): Color {
-    return when (id) {
-        "reading", "fonts", "account", "backup", "shield-quick", "book-shield.stats" -> semanticColor(SemanticTone.Info)
-        "interface", "glass", "page-customization", "mine", "selection", "detail-layout", "cookie", "shield-yaml" -> semanticColor(SemanticTone.Accent)
-        "content", "shield", "privacy", "tools", "resolver" -> semanticColor(SemanticTone.Success)
-        else -> MaterialTheme.colorScheme.primary
-    }
-}
-
-@Composable
 internal fun IconTile(id: String, modifier: Modifier = Modifier) {
     val accent = categoryAccent(id)
     Surface(modifier.size(38.dp), color = accent.copy(alpha = .12f), shape = RoundedCornerShape(11.dp)) {
@@ -125,16 +117,19 @@ internal fun ConsoleIcon(id: String, modifier: Modifier = Modifier, color: Color
         "restart" -> Lucide.drawable.lucide_ic_rotate_cw
         "reading" -> Lucide.drawable.lucide_ic_book_open
         "fonts" -> Lucide.drawable.lucide_ic_type
-        "interface", "page-customization", "mine", "selection", "detail-layout" -> Lucide.drawable.lucide_ic_panels_top_left
+        "interface", "mine", "selection", "detail-layout" -> Lucide.drawable.lucide_ic_panels_top_left
+        "page-customization" -> Lucide.drawable.lucide_ic_layout_template
         "about" -> Lucide.drawable.lucide_ic_info
         "about.repository" -> Lucide.drawable.lucide_ic_github
         "about.author" -> Lucide.drawable.lucide_ic_user_round
         "account" -> Lucide.drawable.lucide_ic_workflow
-        "privacy", "shield" -> Lucide.drawable.lucide_ic_shield
+        "privacy" -> Lucide.drawable.lucide_ic_shield
+        "shield" -> Lucide.drawable.lucide_ic_book_x
         "content" -> Lucide.drawable.lucide_ic_list_filter
         "book-shield.stats" -> Lucide.drawable.lucide_ic_chart_column
         "power" -> Lucide.drawable.lucide_ic_power
         "resolver" -> Lucide.drawable.lucide_ic_scan_line
+        "probes" -> Lucide.drawable.lucide_ic_file_search
         "backup" -> Lucide.drawable.lucide_ic_file_output
         "cookie" -> Lucide.drawable.lucide_ic_key_round
         "glass" -> Lucide.drawable.lucide_ic_rectangle_horizontal

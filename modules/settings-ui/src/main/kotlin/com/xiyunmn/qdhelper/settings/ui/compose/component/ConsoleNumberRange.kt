@@ -3,7 +3,6 @@ package com.xiyunmn.qdhelper.settings.ui.compose.component
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -23,13 +22,12 @@ internal fun ConsoleNumberRange(
     firstPlaceholder: String? = null, lastPlaceholder: String? = null,
 ) {
     val focus = LocalFocusManager.current
-    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         ConsoleTextField(first, onFirstChange, Modifier.weight(1f), enabled = enabled, isError = isError,
             label = { Text(firstLabel) }, placeholder = firstPlaceholder?.let { { Text(it) } }, singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
             keyboardActions = KeyboardActions(onNext = { focus.moveFocus(FocusDirection.Next) }))
-        Text("——", color = MaterialTheme.colorScheme.onSurfaceVariant)
         ConsoleTextField(last, onLastChange, Modifier.weight(1f), enabled = enabled, isError = isError,
             label = { Text(lastLabel) }, placeholder = lastPlaceholder?.let { { Text(it) } }, singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),

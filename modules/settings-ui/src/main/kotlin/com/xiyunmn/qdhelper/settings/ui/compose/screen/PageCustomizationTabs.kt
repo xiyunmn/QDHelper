@@ -13,7 +13,7 @@ import com.xiyunmn.qdhelper.settings.ui.compose.state.SettingsController
 
 @Composable
 internal fun PageCustomizationTabs(entry: SettingsEntry, controller: SettingsController) {
-    val tabs = remember { listOf("mine" to "我的页", "selection" to "精选页", "detail-layout" to "书籍详情") }
+    val tabs = remember { listOf("mine" to "我的页", "selection" to "精选页", "detail-layout" to "书籍详情页") }
     val selected = entry.selectedTab ?: "mine"
     val child = remember(entry, selected) { entry.tabEntries.getOrPut(selected) { SettingsEntry(entry.id, selected) } }
     LaunchedEffect(entry.focusRow) {

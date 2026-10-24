@@ -26,7 +26,10 @@ internal fun WelfareRewardProbeFeature.installNativeRewardSource(
     val concat = FeatureHooks.findDeclaredMethodOrNull(observable, "concatWith", source.returnType) ?: return 0
     return installAround(module, "welfare.native.rewardSource", source, phase) { chain ->
         val activity = chain.args.getOrNull(2) as? Activity
-        if (!isWelfareBrowserActivity(activity)) return@installAround chain.proceed()
+        val welfareContext = isWelfareBrowserActivity(activity)
+        logHit("welfare.native.rewardSource", source,
+            "begin welfareContext=$welfareContext, activity=${activity?.javaClass?.simpleName}, mode=$activeInstallMode")
+        if (!welfareContext) return@installAround chain.proceed()
         val bypass = acquireFlutterRewardBypassSource("native.rewardSource")
             ?: return@installAround chain.proceed()
         @Suppress("UNCHECKED_CAST")

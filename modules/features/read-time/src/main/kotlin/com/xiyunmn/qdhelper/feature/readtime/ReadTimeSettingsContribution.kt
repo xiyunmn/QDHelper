@@ -31,7 +31,7 @@ object ReadTimeSettingsContribution : SettingsContribution {
                 SettingsRow.Toggle(
                     id = "read_time.multiplier.enabled",
                     title = "阅读时长倍率",
-                    summary = "按倍率调整上报给服务端的阅读时长，修改后即时生效。高风险操作。",
+                    summary = "调整上报的阅读时长。",
                     key = SettingIds.KEY_READ_TIME_MULTIPLIER_ENABLED,
                     defaultValue = false,
                     onChanged = SettingsBooleanChangedAction { scope, _ ->
@@ -42,7 +42,7 @@ object ReadTimeSettingsContribution : SettingsContribution {
                 SettingsRow.Slider(
                     id = "read_time.multiplier.value",
                     title = "倍率",
-                    summary = "0.1x – 2.5x，步进 0.1x。手动调整后覆盖本账号的自动限制；后续检测到折损时仍会自动回退。",
+                    summary = "",
                     key = SettingIds.KEY_READ_TIME_MULTIPLIER_VALUE,
                     minValue = ReadTimeMultiplierPolicy.MIN_MULTIPLIER,
                     maxValue = ReadTimeMultiplierPolicy.MAX_MULTIPLIER,
@@ -53,7 +53,7 @@ object ReadTimeSettingsContribution : SettingsContribution {
                             ReadTimeCloudAuditStore.automaticLimit(context, ReadTimeRuntime.userId(context))
                         }
                         val effective = ReadTimeMultiplierPolicy.effectiveMultiplier(value, automaticLimit)
-                        String.format(Locale.US, "设定 %.1fx · 生效 %.3fx", value, effective)
+                        String.format(Locale.US, "实际生效 %.3f×", effective)
                     },
                     onCommitted = SettingsDoubleChangedAction { scope, _ ->
                         val activity = scope.activity
@@ -67,7 +67,7 @@ object ReadTimeSettingsContribution : SettingsContribution {
                 SettingsRow.Toggle(
                     id = "read_time.local_display.real",
                     title = "本地显示真实时长",
-                    summary = "按当前账号汇总本地记录的原始时长，显示今日和本周统计。",
+                    summary = "用于今日和本周统计。",
                     key = SettingIds.KEY_READ_TIME_LOCAL_DISPLAY_REAL,
                     defaultValue = false,
                     keywords = setOf("本地显示", "真实时长", "数据库"),
@@ -75,22 +75,22 @@ object ReadTimeSettingsContribution : SettingsContribution {
                 SettingsRow.Action(
                     id = "read_time.report_audit",
                     tool = ReadTimeAuditTool,
-                    title = "查看阅读时长上报记录",
-                    summary = "保留今日最近 50 条入库与宿主网络成功回调，并显示云端增量、实际认可倍率、折损时长及实际倍率限制。",
+                    title = "上报记录",
+                    summary = "",
                     actionText = "查看",
                     keywords = setOf("上报记录", "统计", "额外时长"),
                 ),
                 SettingsRow.Action(
                     id = "read_time.cloud_probe",
                     tool = ReadTimeCloudTool,
-                    title = "查看云端阅读时长",
-                    summary = "拉取服务端记录并与上次基线核验；确认折损时自动限制实际倍率。仅在联网时可用。",
+                    title = "云端时长",
+                    summary = "",
                     actionText = "查询",
                     keywords = setOf("云端", "核对"),
                 ),
                 SettingsRow.Hint(
                     id = "read_time.hint",
-                    text = "云端查询始终显示服务端原始统计；自动限制按 0.001x 向下取整且不低于 1.000x。关闭倍率后新记录恢复真实值。",
+                    text = "倍率可设为0.1～2.5倍，修改即时生效；关闭后，新记录恢复真实时长。\n本地显示统计当前账号的原始时长，云端时长以起点返回为准，查询需联网。\n如果起点认可的时长较少，实际倍率会自动降低；手动调整可重新设定，后续仍可能自动下调。\n上报记录保留今日最近50条，方便核对实际增加的时长。",
                 ),
             ),
         ),
