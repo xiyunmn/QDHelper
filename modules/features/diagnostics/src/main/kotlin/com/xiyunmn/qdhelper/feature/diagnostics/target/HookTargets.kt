@@ -42,6 +42,30 @@ object HookTargets {
             purpose = "reader page watermark",
         ),
         HookTargetSpec(
+            id = "reader.watermark.overlay",
+            className = QDReaderHost.Classes.FOCK_WATERMARK_VIEW,
+            methodName = "onDraw",
+            purpose = "reader fullscreen and bottom watermark drawing",
+        ),
+        HookTargetSpec(
+            id = "reader.watermark.page-header",
+            className = QDReaderHost.Classes.READ_HEAD_VIEW,
+            methodName = "showBarCode",
+            purpose = "paged reader account barcode",
+        ),
+        HookTargetSpec(
+            id = "reader.watermark.scroll-header",
+            className = QDReaderHost.Classes.SCROLL_FLIP_HEAD_VIEW,
+            methodName = "showBarCode",
+            purpose = "scroll reader account barcode",
+        ),
+        HookTargetSpec(
+            id = "content.role-card-watermark",
+            className = QDReaderHost.Classes.ACTION_URL_PROCESS,
+            methodName = "processImageGallery",
+            purpose = "role card gallery watermark source",
+        ),
+        HookTargetSpec(
             id = "startup.reportRom",
             className = QDReaderHost.Classes.SPLASH_ACTIVITY,
             methodName = "reportUserRom",

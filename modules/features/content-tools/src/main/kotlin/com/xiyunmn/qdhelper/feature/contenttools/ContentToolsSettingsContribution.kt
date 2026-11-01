@@ -19,7 +19,7 @@ object ContentToolsSettingsContribution : SettingsContribution {
             order = 300,
             groupId = "core.main",
             rows = listOf(
-                SettingsRow.Toggle("content-tools.upload-watermark", "发帖图片去水印", "圈子发帖、胶囊及衍生内容上传图片时，跳过右下角图标与 @昵称水印，改用原图继续上传。", SettingIds.KEY_DISABLE_UPLOAD_WATERMARK),
+                SettingsRow.Toggle("content-tools.upload-watermark", "发帖图片去水印", "上传图片时去除图标和昵称水印，保留图片方向校正。", SettingIds.KEY_DISABLE_UPLOAD_WATERMARK),
             ),
         ),
         SettingsSection(
@@ -41,7 +41,7 @@ object ContentToolsSettingsContribution : SettingsContribution {
             groupId = "page-customization.book-detail-card",
             rows = listOf(
                 SettingsRow.Toggle("content-tools.book-intro-copy", "简介自由复制", "长按书籍详情页简介，打开完整内容浮窗并自由选择复制范围。", SettingIds.KEY_BOOK_DETAIL_INTRO_FREE_COPY_ENABLED, keywords = setOf("书籍简介", "详情页复制", "长按简介")),
-                SettingsRow.Toggle("content-tools.book-cover-original", "封面原图", "长按书籍封面查看高清原图，支持缩放、拖动和保存到相册。", SettingIds.KEY_BOOK_DETAIL_COVER_ORIGINAL_ENABLED, keywords = setOf("书籍封面", "长按封面", "缩放封面", "保存封面")),
+                SettingsRow.Toggle("content-tools.book-cover-original", "封面原图", "点击封面打开大图后，可直接保存到相册。", SettingIds.KEY_BOOK_DETAIL_COVER_ORIGINAL_ENABLED, keywords = setOf("书籍封面", "封面大图", "保存封面")),
                 SettingsRow.Toggle("content-tools.role-avatar-original", "角色头像原图", "长按角色卡片或更多角色列表头像查看原图，支持缩放、拖动和保存到相册。", SettingIds.KEY_BOOK_DETAIL_ROLE_AVATAR_ORIGINAL_ENABLED, keywords = setOf("角色卡片", "更多角色", "角色头像", "长按头像", "保存头像")),
                 SettingsRow.Toggle("content-tools.fans-rank", "显示完整粉丝排名", "书友榜排名超过 99 时，仍显示真实粉丝排名。", SettingIds.KEY_BOOK_DETAIL_FANS_RANK_ENABLED, keywords = setOf("书友榜", "粉丝排名", "真实排名")),
             ),
@@ -52,6 +52,12 @@ object ContentToolsSettingsContribution : SettingsContribution {
             title = "卡牌广场",
             order = 550,
             rows = listOf(
+                SettingsRow.Toggle(
+                    "content-tools.role-card-watermark", "角色卡大图去水印",
+                    "去除角色卡大图查看器添加的起点标识。",
+                    SettingIds.KEY_DISABLE_ROLE_CARD_WATERMARK,
+                    keywords = setOf("角色卡", "卡牌大图", "图片水印", "去水印"),
+                ),
                 SettingsRow.Toggle(
                     "content-tools.card-plaza-local-unlock",
                     "本地解锁全部卡牌",

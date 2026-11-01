@@ -16,8 +16,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.xiyunmn.qdhelper.settings.api.SettingsDocumentState
 import com.xiyunmn.qdhelper.settings.api.SettingsRow
+import com.xiyunmn.qdhelper.settings.api.SettingsFontEffectsController
 import com.xiyunmn.qdhelper.settings.ui.compose.component.*
 import com.xiyunmn.qdhelper.settings.ui.compose.editor.ManagedListEditor
+import com.xiyunmn.qdhelper.settings.ui.compose.editor.FontEffectsScreen
 import com.xiyunmn.qdhelper.settings.ui.compose.editor.InlineTextSetting
 import com.xiyunmn.qdhelper.settings.ui.compose.editor.StartupImageSetting
 import com.xiyunmn.qdhelper.settings.ui.compose.editor.PageCustomizationScreen
@@ -43,6 +45,10 @@ internal fun SettingsPage(entry: SettingsEntry, controller: SettingsController, 
         return
     }
     val rows = catalog.rowsFor(entry.destination)
+    if (entry.destination == "font-effects") {
+        FontEffectsScreen(rows.filterIsInstance<SettingsRow.Action>().single().tool as SettingsFontEffectsController, controller)
+        return
+    }
     if (entry.destination == "font-library") {
         ManagedListEditor(rows.filterIsInstance<SettingsRow.ManagedList>().single(), controller) { edit(catalog.rows.getValue("reader-font.manager-clear")) }
         return

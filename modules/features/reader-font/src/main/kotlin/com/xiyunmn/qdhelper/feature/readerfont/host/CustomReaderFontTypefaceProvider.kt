@@ -15,7 +15,7 @@ internal object CustomReaderFontTypefaceProvider {
 
     fun currentTypeface(context: Context): Typeface? {
         if (!FontSelectionStore.isEnabled(context, FontRole.READER)) return null
-        return FontTypefaceCache.load(FontSelectionStore.selectedPath(context, FontRole.READER))
+        return NativeFontTypefaceProvider.load(context, FontRole.READER)
     }
 
     fun clearCache() {

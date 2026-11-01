@@ -30,6 +30,7 @@ import com.xiyunmn.qdhelper.feature.contenttools.ProfileH5Feature
 import com.xiyunmn.qdhelper.feature.contenttools.ReaderBackgroundH5Feature
 import com.xiyunmn.qdhelper.feature.contenttools.ProfilePrivacyRestoreFeature
 import com.xiyunmn.qdhelper.feature.contenttools.UploadWatermarkFeature
+import com.xiyunmn.qdhelper.feature.contenttools.RoleCardWatermarkFeature
 import com.xiyunmn.qdhelper.feature.networkidentity.NetworkPrivacyFeature
 import com.xiyunmn.qdhelper.feature.reader.ReaderPrivacyFeature
 import com.xiyunmn.qdhelper.feature.startup.StartupPrivacyFeature
@@ -121,6 +122,7 @@ internal object FeatureCatalogComposition {
             row("startup.privacy-gates") { StartupPrivacyFeature },
             row("network-identity.privacy-gates") { NetworkPrivacyFeature },
             row("content-tools.upload-watermark") { UploadWatermarkFeature },
+            row("content-tools.role-card-watermark") { RoleCardWatermarkFeature },
             row("reader.chapter-comment-share-limit") { ChapterCommentShareLimitFeature },
             row(
                 "startup.core",

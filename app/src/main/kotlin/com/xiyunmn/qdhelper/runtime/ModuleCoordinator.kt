@@ -2,6 +2,7 @@ package com.xiyunmn.qdhelper.runtime
 
 import android.app.Application
 import android.os.Bundle
+import com.xiyunmn.qdhelper.feature.api.runtime.FlutterBookDetailRuntime
 import com.xiyunmn.qdhelper.foundation.android.AndroidApiSupport
 import com.xiyunmn.qdhelper.hook.resource.RuntimeCleanupRegistry
 import com.xiyunmn.qdhelper.hook.runtime.HookRuntime
@@ -75,6 +76,7 @@ class ModuleCoordinator(
             putString(STATE_PROCESS_NAME, processName)
             putBoolean(STATE_TARGET_PACKAGE_READY, targetPackageReady)
             putBoolean(STATE_APPLICATION_RETRY_DONE, applicationReadyRetryDone.get())
+            putString(STATE_FLUTTER_BOOKS, FlutterBookDetailRuntime.saveState())
         })
         HookRuntime.i(
             "Hot reload requested: process=${QDReaderHost.processLabel(processName)}, " +
@@ -98,6 +100,7 @@ class ModuleCoordinator(
         val savedState = param.savedInstanceState as? Bundle
         targetPackageReady = savedState?.getBoolean(STATE_TARGET_PACKAGE_READY, false) ?: false
         applicationReadyRetryDone.set(savedState?.getBoolean(STATE_APPLICATION_RETRY_DONE, false) ?: false)
+        FlutterBookDetailRuntime.restoreState(savedState?.getString(STATE_FLUTTER_BOOKS))
         HookRuntime.i(
             "Hot reloaded: process=${QDReaderHost.processLabel(processName)}, " +
                 "oldHandles=${oldHandles.size}, targetReady=$targetPackageReady",
@@ -241,5 +244,6 @@ class ModuleCoordinator(
         const val STATE_PROCESS_NAME = "processName"
         const val STATE_TARGET_PACKAGE_READY = "targetPackageReady"
         const val STATE_APPLICATION_RETRY_DONE = "applicationReadyRetryDone"
+        const val STATE_FLUTTER_BOOKS = "flutterBookDetailMetadata"
     }
 }

@@ -135,6 +135,7 @@ object ReaderBackgroundFeature : InstallableFeature {
         val method = FeatureHooks.allDeclaredMethods(detailClass).singleOrNull { candidate ->
             val parameters = candidate.parameterTypes
             Modifier.isStatic(candidate.modifiers) &&
+                !candidate.isSynthetic &&
                 candidate.returnType == Void.TYPE &&
                 parameters.size == 5 &&
                 parameters[0] == detailClass &&
@@ -171,10 +172,10 @@ object ReaderBackgroundFeature : InstallableFeature {
                 !candidate.parameterTypes[0].isPrimitive &&
                 candidate.parameterTypes[1] == Int::class.javaPrimitiveType
         } ?: return false
-        val itemGetter = FeatureHooks.methodsInHierarchy(adapterClass).singleOrNull { candidate ->
-            candidate.name == "getItem" &&
-                candidate.parameterTypes.contentEquals(arrayOf(Int::class.javaPrimitiveType)) &&
-                entityClass.isAssignableFrom(candidate.returnType)
+        val itemGetter = runCatching {
+            adapterClass.getMethod("getItem", Int::class.javaPrimitiveType).apply { isAccessible = true }
+        }.getOrNull()?.takeIf { candidate ->
+            !Modifier.isStatic(candidate.modifiers) && !candidate.returnType.isPrimitive
         } ?: return false
         return FeatureHooks.hookAfter(
             module,

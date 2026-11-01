@@ -43,7 +43,7 @@ object CustomReaderFontFeature : InstallableFeature {
             FeatureHooks.i("Custom reader font skipped: process=$processName, phase=$phase")
             return
         }
-        var installedHooks = 0
+        var installedHooks = NativeFontEffects.install(module)
         registerActivityResultHandler()
         installedHooks += hookReaderFontManager(module, classLoader)
         installedHooks += hookReaderEngineTypefaceGetter(module, classLoader, processName)

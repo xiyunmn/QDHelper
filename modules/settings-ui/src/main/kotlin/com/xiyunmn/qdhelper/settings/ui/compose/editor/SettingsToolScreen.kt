@@ -21,6 +21,10 @@ import kotlinx.coroutines.delay
 
 @Composable
 internal fun SettingsToolScreen(tool: SettingsToolController, controller: SettingsController) {
+    if (tool is SettingsFontEffectsController) {
+        FontEffectsScreen(tool, controller)
+        return
+    }
     val entry = LocalSettingsEntry.current
     var state by remember(tool) { mutableStateOf(tool.read(controller.activity.applicationContext)) }
     val fields = remember(tool) { mutableStateMapOf<String, String>().apply { state.fields.forEach { put(it.id, it.value) } } }

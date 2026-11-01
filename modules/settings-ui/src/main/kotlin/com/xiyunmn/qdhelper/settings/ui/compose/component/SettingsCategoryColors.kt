@@ -32,6 +32,7 @@ private val defaultIconColors = mapOf(
     "book-shield.stats" to SettingsIconColor.Blue,
     "page-customization" to SettingsIconColor.Violet,
     "font-library" to SettingsIconColor.Violet,
+    "font-effects" to SettingsIconColor.Violet,
     "backup" to SettingsIconColor.Blue,
     "cookie" to SettingsIconColor.Amber,
     "resolver" to SettingsIconColor.Teal,

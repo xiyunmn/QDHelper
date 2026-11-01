@@ -109,6 +109,7 @@ internal fun ConsoleIcon(id: String, modifier: Modifier = Modifier, color: Color
         "top" -> Lucide.drawable.lucide_ic_arrow_up_to_line
         "drag" -> Lucide.drawable.lucide_ic_grip_vertical
         "copy" -> Lucide.drawable.lucide_ic_copy
+        "delete" -> Lucide.drawable.lucide_ic_trash_2
         "reveal" -> Lucide.drawable.lucide_ic_eye
         "mask" -> Lucide.drawable.lucide_ic_eye_off
         "search" -> Lucide.drawable.lucide_ic_search

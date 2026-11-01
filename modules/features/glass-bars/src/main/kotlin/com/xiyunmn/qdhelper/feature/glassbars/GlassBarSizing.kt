@@ -30,6 +30,11 @@ internal class GlassBarSizing(private val binding: GlassBarBinding) : AutoClosea
     }
 
     private val views = IdentityHashMap<View, SizedView>()
+    private val flexibleWidth = binding.flexibleControl?.takeIf { binding.kind == GlassBarKind.DETAIL }?.let { view ->
+        OwnedProperty({ view.layoutParams.width }, { width ->
+            view.layoutParams = view.layoutParams.apply { this.width = width }
+        })
+    }
     private val density = binding.bar.resources.displayMetrics.density
     private var nativeHeight = 0
     val extraHeight: Int get() = if (nativeHeight > 0) binding.bar.height - nativeHeight else 0
@@ -59,6 +64,19 @@ internal class GlassBarSizing(private val binding: GlassBarBinding) : AutoClosea
                 sized.frameGravity?.update { (it.coerceAtLeast(0) and Gravity.VERTICAL_GRAVITY_MASK.inv()) or Gravity.CENTER_VERTICAL }
             }
         }
+        fitFlexibleControl()
+    }
+
+    private fun fitFlexibleControl() {
+        val width = flexibleWidth ?: return
+        val control = binding.flexibleControl ?: return
+        val parent = control.parent as? ViewGroup ?: return
+        if (parent.width <= 0 || control.visibility == View.GONE) return
+        val margins = (control.layoutParams as? ViewGroup.MarginLayoutParams)
+            ?.let { it.leftMargin + it.rightMargin } ?: 0
+        val available = (parent.width - parent.paddingLeft - parent.paddingRight - margins).coerceAtLeast(0)
+        // The host may retain a screen-wide allocation after its wrapper becomes a floating bar.
+        width.update { original -> if (original > 0) minOf(original, available) else original }
     }
 
     // Container heights may already be our allocation. Only intrinsic content and fixed leaves
@@ -92,6 +110,7 @@ internal class GlassBarSizing(private val binding: GlassBarBinding) : AutoClosea
     }
 
     override fun close() {
+        flexibleWidth?.close()
         views.values.forEach { it.close() }
         views.clear()
     }

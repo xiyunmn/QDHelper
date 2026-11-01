@@ -33,6 +33,10 @@ object HostSymbols {
         const val QD_CONFIG = "com.qidian.common.lib.QDConfig"
         const val APPLICATION_CONTEXT = "com.qidian.common.lib.ApplicationContext"
         const val FOCK_UTIL = "com.qidian.QDReader.component.util.FockUtil"
+        const val FOCK_WATERMARK_VIEW = "com.yuewen.fock.FockWatermarkView"
+        const val READ_HEAD_VIEW = "com.qidian.QDReader.readerengine.view.content.ReadHeadView"
+        const val SCROLL_FLIP_HEAD_VIEW = "com.qidian.QDReader.readerengine.view.content.ScrollFlipHeadView"
+        const val QD_UI_GALLERY_ACTIVITY = "com.qd.ui.component.modules.imagepreivew.QDUIGalleryActivity"
         /** Stable host-native security diagnostics bridge in the active audit interval. */
         const val NIB_NATIVE_WRAPPER = "com.yuewen.nib.NativeWrapper"
         const val NIB_SEARCH = "com.yuewen.nib.search"

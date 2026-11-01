@@ -1,6 +1,8 @@
 package com.xiyunmn.qdhelper.feature.contenttools
 
 import android.content.Context
+import com.xiyunmn.qdhelper.feature.api.runtime.FlutterBookDetailRuntime
+import com.xiyunmn.qdhelper.feature.api.runtime.FlutterSemanticsSupport
 import android.content.ContextWrapper
 import android.view.View
 import android.widget.TextView
@@ -33,6 +35,20 @@ object BookDetailFreeCopyFeature : InstallableFeature {
         phase: String,
     ) {
         if (!QDReaderHost.isMainProcess(processName)) return
+        FlutterBookDetailRuntime.install(module, classLoader, phase, "book-intro-copy", SettingsRuntime::isBookDetailIntroFreeCopyEnabled)
+        FlutterSemanticsSupport.register(
+            "book-intro-copy",
+            enabled = { it.javaClass.name == FlutterBookDetailRuntime.ACTIVITY && SettingsRuntime.isBookDetailIntroFreeCopyEnabled(it) },
+            longPress = { activity, view, node ->
+                val description = FlutterBookDetailRuntime.current(activity)?.description.orEmpty()
+                val text = node.label.trim()
+                if (description.isNotBlank() && (node.identifier == INTRO_VIEW_ID ||
+                        text.length >= 20 && description.startsWith(text.take(40)))) {
+                    { FreeCopyDialog.show(view, description, DIALOG_TITLE); Unit }
+                } else null
+            },
+        )
+        FlutterSemanticsSupport.install(module, classLoader, phase)
         val collapsedTextClass = FeatureHooks.findClassOrNull(QDReaderHost.Classes.QDUI_COLLAPSED_TEXT_VIEW, classLoader)
         if (collapsedTextClass == null) {
             FeatureHooks.w("Book detail free copy skipped: collapsed text class missing, phase=$phase")

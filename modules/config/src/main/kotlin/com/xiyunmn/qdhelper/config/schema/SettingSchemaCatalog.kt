@@ -68,6 +68,8 @@ object SettingSchemaCatalog {
     }
 
     private fun stringValidator(rawKey: String): (String) -> Boolean = when (rawKey) {
+        SettingIds.KEY_CUSTOM_READER_FONT_EFFECTS, SettingIds.KEY_CUSTOM_GLOBAL_FONT_REGULAR_EFFECTS,
+        SettingIds.KEY_CUSTOM_GLOBAL_FONT_EMPHASIS_EFFECTS -> com.xiyunmn.qdhelper.config.FontEffectSettings::accepts
         SettingIds.KEY_GLASS_MAIN_HEIGHT, SettingIds.KEY_GLASS_DETAIL_HEIGHT, SettingIds.KEY_GLASS_DIRECTORY_HEIGHT ->
             integerRange(GlassBarDimensions.MIN_HEIGHT..GlassBarDimensions.MAX_HEIGHT)
         SettingIds.KEY_GLASS_MAIN_WIDTH, SettingIds.KEY_GLASS_DETAIL_WIDTH, SettingIds.KEY_GLASS_DIRECTORY_WIDTH ->

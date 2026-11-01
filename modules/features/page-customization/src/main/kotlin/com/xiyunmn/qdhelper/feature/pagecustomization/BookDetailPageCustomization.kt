@@ -56,6 +56,7 @@ object BookDetailPageCustomization {
         phase: String,
     ): Int {
         var installedHooks = 0
+        installedHooks += BookDetailFlutterCustomization.install(module, classLoader, phase)
         installedHooks += installViewMethodGate(
             module = module,
             classLoader = classLoader,

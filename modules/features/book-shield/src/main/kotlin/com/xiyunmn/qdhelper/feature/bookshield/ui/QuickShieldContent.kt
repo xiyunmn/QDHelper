@@ -46,7 +46,7 @@ internal fun QuickShieldContent(session: QuickShieldSession) {
         val text = Color(palette.text)
         (if (palette.night) darkColorScheme() else lightColorScheme()).copy(
             primary = brand, onPrimary = if (1.05f / (brand.luminance() + .05f) >= 3f) Color.White else Color.Black,
-            primaryContainer = lerp(surface, brand, .12f), onPrimaryContainer = text,
+            primaryContainer = lerp(surface, brand, if (palette.night) .24f else .10f), onPrimaryContainer = text,
             surface = surface, onSurface = text, surfaceContainer = Color(palette.card),
             onSurfaceVariant = Color(palette.muted), outlineVariant = Color(palette.divider), surfaceTint = brand,
         )
@@ -74,11 +74,11 @@ internal fun QuickShieldContent(session: QuickShieldSession) {
                                             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
                                             border = BorderStroke(1.dp, colors.outlineVariant),
                                             colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.onSurface)) { Text("复制") }
-                                        val actionColor = if (present) Color(if (palette.night) 0xFFFFB060 else 0xFFAA4D00) else colors.primary
+                                        val actionColor = colors.primary
                                         FilledTonalButton({ session.change(index) }, enabled = !session.busy,
                                             shape = RoundedCornerShape(10.dp),
                                             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
-                                            colors = ButtonDefaults.filledTonalButtonColors(containerColor = actionColor.copy(alpha = .12f), contentColor = actionColor)) {
+                                            colors = ButtonDefaults.filledTonalButtonColors(containerColor = colors.primaryContainer, contentColor = actionColor)) {
                                             Text(if (present) "移出" else "加入")
                                         }
                                     }

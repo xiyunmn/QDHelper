@@ -7,6 +7,8 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.xiyunmn.qdhelper.config.FontEffectScope
+import com.xiyunmn.qdhelper.config.FontEffectSettings
 
 internal class SettingsEntry(
     val id: Long, val destination: String, val editor: String? = null,
@@ -17,8 +19,10 @@ internal class SettingsEntry(
     val tabEntries = mutableMapOf<String, SettingsEntry>()
     var selectedTab by mutableStateOf<String?>(null)
     val expanded = mutableStateMapOf<String, Boolean>()
+    val fontEffectDrafts = mutableStateMapOf<FontEffectScope, FontEffectSettings>()
     var focusRow by mutableStateOf(focus)
     var focusChoice by mutableStateOf<String?>(null)
+    var consumeBack: (() -> Boolean)? = null
 }
 
 /** Bound to AnimatedContent's entry, never the navigator's changing top of stack. */
@@ -39,6 +43,7 @@ internal class SettingsNavigator {
         stack.add(SettingsEntry(sequence++, destination, editor, focus))
     }
     fun back(): Boolean {
+        if (current.consumeBack?.invoke() == true) return true
         if (stack.size == 1) return false
         forward = false
         stack.removeAt(stack.lastIndex)

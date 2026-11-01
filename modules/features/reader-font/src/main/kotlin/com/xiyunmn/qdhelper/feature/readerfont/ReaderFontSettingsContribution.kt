@@ -2,6 +2,7 @@ package com.xiyunmn.qdhelper.feature.readerfont
 
 import com.xiyunmn.qdhelper.config.SettingIds
 import com.xiyunmn.qdhelper.feature.readerfont.settings.FontRoleChoiceController
+import com.xiyunmn.qdhelper.feature.readerfont.settings.FontEffectsController
 import com.xiyunmn.qdhelper.feature.readerfont.settings.ReaderFontManagedListController
 import com.xiyunmn.qdhelper.feature.readerfont.ui.ReaderFontSettingsActions
 import com.xiyunmn.qdhelper.foundation.identity.OwnerId
@@ -127,6 +128,23 @@ object ReaderFontSettingsContribution : SettingsContribution {
                 SettingIds.KEY_CUSTOM_GLOBAL_FONT_EMPHASIS_PATH,
                 SettingIds.KEY_CUSTOM_GLOBAL_FONT_EMPHASIS_NAME,
             ),
+        ),
+        SettingsSection(
+            id = "reader-font.effects",
+            page = SettingsPageIds.READER_FONT_EFFECTS,
+            title = "字体效果调整",
+            order = 100,
+            rows = listOf(SettingsRow.Action(
+                id = "reader-font.effects",
+                title = "字体效果调整",
+                summary = "预览并调整字重、字号、字宽和字间距。",
+                actionText = "调整",
+                tool = FontEffectsController,
+                settingKeys = setOf(SettingIds.KEY_CUSTOM_READER_FONT_EFFECTS,
+                    SettingIds.KEY_CUSTOM_GLOBAL_FONT_REGULAR_EFFECTS,
+                    SettingIds.KEY_CUSTOM_GLOBAL_FONT_EMPHASIS_EFFECTS),
+                keywords = setOf("字号", "字重", "字宽", "字间距", "字体预览"),
+            )),
         ),
         SettingsSection(
             id = "reader-font.manager",

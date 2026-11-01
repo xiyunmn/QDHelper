@@ -23,17 +23,12 @@ internal fun flutterFontRole(requestedFamily: String?): FontRole {
 internal object GlobalFontTypefaceProvider {
     fun regular(context: Context): Typeface? {
         if (!SettingsRuntime.isCustomGlobalFontEnabled(context)) return null
-        return FontTypefaceCache.load(FontSelectionStore.selectedPath(context, FontRole.GLOBAL_REGULAR))
+        return NativeFontTypefaceProvider.load(context, FontRole.GLOBAL_REGULAR)
     }
 
     fun emphasis(context: Context): Typeface? {
         if (!SettingsRuntime.isCustomGlobalFontEnabled(context)) return null
-        val explicit = FontSelectionStore.selectedPath(context, FontRole.GLOBAL_EMPHASIS)
-        if (explicit.isNotBlank()) {
-            FontTypefaceCache.load(explicit)?.let { return it }
-        }
-        val regular = FontSelectionStore.selectedPath(context, FontRole.GLOBAL_REGULAR)
-        return FontTypefaceCache.load(regular, Typeface.BOLD)
+        return NativeFontTypefaceProvider.load(context, FontRole.GLOBAL_EMPHASIS)
     }
 
     fun flutterFontPath(context: Context, requestedFamily: String?): String? {

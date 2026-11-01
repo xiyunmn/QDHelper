@@ -22,7 +22,8 @@ object ReaderSettingsContribution : SettingsContribution {
             order = 200,
             groupId = "core.main",
             rows = listOf(
-                SettingsRow.Toggle("reader.watermark", "阅读页去水印", "短路 QDReaderActivity.setWaterMark。", SettingIds.KEY_DISABLE_READER_WATERMARK),
+                SettingsRow.Toggle("reader.watermark", "阅读页去水印", "去除阅读页暗码和页眉账号标记，支持翻页与滚动阅读。", SettingIds.KEY_DISABLE_READER_WATERMARK,
+                    keywords = setOf("盲水印", "暗水印", "隐形水印", "账号条码")),
             ),
         ),
         SettingsSection(

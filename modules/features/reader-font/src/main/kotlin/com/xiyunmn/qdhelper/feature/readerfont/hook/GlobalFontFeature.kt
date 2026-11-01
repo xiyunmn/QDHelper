@@ -37,7 +37,7 @@ object GlobalFontFeature : InstallableFeature {
         phase: String,
     ) {
         if (!QDReaderHost.isMainProcess(processName)) return
-        var installedHooks = 0
+        var installedHooks = NativeFontEffects.install(module)
         installedHooks += hookTypefaceGetter(
             module = module,
             method = resolveTypefaceGetter(

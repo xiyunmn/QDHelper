@@ -69,6 +69,7 @@ internal object BookShieldJsonFilter {
 
     private fun walkArray(array: JSONArray, rules: BookShieldRules, location: String): Int {
         var removed = 0
+        val pending = ArrayList<Pair<Int, ShieldEvent>>()
         for (index in array.length() - 1 downTo 0) {
             val obj = array.optJSONObject(index) ?: continue
             if (!isBookNode(obj)) {
@@ -77,23 +78,26 @@ internal object BookShieldJsonFilter {
             val info = bookInfoFromJson(obj) ?: continue
             val reason = rules.matchReason(info)
             if (reason != null) {
+                pending += index to ShieldEvent(
+                    timestamp = System.currentTimeMillis(),
+                    location = location,
+                    reasonKind = reason.kind,
+                    reasonDetail = reason.detail,
+                    bookId = info.id,
+                    title = info.title,
+                    author = info.author,
+                    category = info.categoryForStatistics(),
+                    tags = info.tags,
+                    words = info.words,
+                    source = info.sourceClass,
+                )
+            }
+        }
+        if (rules.allowEmptyResult || pending.size < array.length()) {
+            pending.forEach { (index, event) ->
                 array.remove(index)
                 removed++
-                BookShieldStats.record(
-                    ShieldEvent(
-                        timestamp = System.currentTimeMillis(),
-                        location = location,
-                        reasonKind = reason.kind,
-                        reasonDetail = reason.detail,
-                        bookId = info.id,
-                        title = info.title,
-                        author = info.author,
-                        category = info.categoryForStatistics(),
-                        tags = info.tags,
-                        words = info.words,
-                        source = info.sourceClass,
-                    ),
-                )
+                BookShieldStats.record(event)
             }
         }
         for (index in 0 until array.length()) {

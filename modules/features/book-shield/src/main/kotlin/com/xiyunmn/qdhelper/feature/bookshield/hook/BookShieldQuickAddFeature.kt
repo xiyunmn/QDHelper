@@ -8,6 +8,8 @@ import android.view.View
 import android.widget.TextView
 import android.widget.Toast
 import com.xiyunmn.qdhelper.feature.api.runtime.FeatureHooks
+import com.xiyunmn.qdhelper.feature.api.runtime.FlutterBookDetailRuntime
+import com.xiyunmn.qdhelper.feature.api.runtime.FlutterSemanticsSupport
 import com.xiyunmn.qdhelper.feature.api.runtime.ActivityLifecycleCallbacks
 import com.xiyunmn.qdhelper.feature.api.runtime.FeatureResources
 import com.xiyunmn.qdhelper.feature.api.runtime.InstallableFeature
@@ -36,6 +38,26 @@ object BookShieldQuickAddFeature : InstallableFeature {
         phase: String,
     ) {
         if (!QDReaderHost.isMainProcess(processName)) return
+        FlutterBookDetailRuntime.install(module, classLoader, phase, "book-quick-shield", SettingsRuntime::isBookShieldQuickAddEnabled)
+        FlutterSemanticsSupport.register(
+            "book-quick-shield",
+            enabled = { it.javaClass.name == FlutterBookDetailRuntime.ACTIVITY && SettingsRuntime.isBookShieldQuickAddEnabled(it) },
+            longPress = { activity, view, node ->
+                val book = FlutterBookDetailRuntime.current(activity)
+                if (book != null && !node.image && node.label.trim().isNotEmpty() &&
+                    (node.label.trim() == book.title || node.label.trim() == book.author)) {
+                    {
+                        BookShieldQuickAddDialog.show(activity, BookInfo(
+                            id = book.id, title = book.title, author = book.author,
+                            category = null, subCategory = null, tags = null, type = null,
+                            typeCode = null, words = null, sourceClass = FlutterBookDetailRuntime.ACTIVITY,
+                        ), view)
+                        Unit
+                    }
+                } else null
+            },
+        )
+        FlutterSemanticsSupport.install(module, classLoader, phase)
         val activityClass = FeatureHooks.findClassOrNull(QDReaderHost.Classes.BOOK_DETAIL_ACTIVITY, classLoader)
             ?: return
         if (activitySubscription == null) {

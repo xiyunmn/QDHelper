@@ -24,6 +24,7 @@ feature.glass_bars.animation	BOOLEAN	true	USER
 feature.glass_bars.strength	STRING	standard	USER
 feature.reader_watermark.disable	BOOLEAN	false	USER
 feature.upload_watermark.disable	BOOLEAN	false	USER
+feature.role_card_watermark.disable	BOOLEAN	false	USER
 feature.startup.block_splash_ad	BOOLEAN	false	USER
 feature.startup.skip_splash_image	BOOLEAN	false	USER
 feature.startup.local_splash_image.enabled	BOOLEAN	false	USER
@@ -58,6 +59,7 @@ feature.read_page.custom_font.enabled	BOOLEAN	false	USER
 feature.read_page.custom_font.path	STRING		USER
 feature.read_page.custom_font.name	STRING		USER
 feature.read_page.custom_font.list	STRING		USER
+feature.read_page.custom_font.effects	STRING		USER
 feature.read_page.background.local_unlock	BOOLEAN	false	USER
 feature.read_page.background.long_press_save	BOOLEAN	false	USER
 feature.ui.custom_font.enabled	BOOLEAN	false	USER
@@ -65,6 +67,8 @@ feature.ui.custom_font.regular.path	STRING		USER
 feature.ui.custom_font.regular.name	STRING		USER
 feature.ui.custom_font.emphasis.path	STRING		USER
 feature.ui.custom_font.emphasis.name	STRING		USER
+feature.ui.custom_font.regular.effects	STRING		USER
+feature.ui.custom_font.emphasis.effects	STRING		USER
 feature.bookshelf.night_mode_same_as_day	BOOLEAN	false	USER
 feature.ui.hide_bookshelf_hover_ad	BOOLEAN	false	USER
 feature.ui.hide_bottom_tab_red_dot	BOOLEAN	false	USER

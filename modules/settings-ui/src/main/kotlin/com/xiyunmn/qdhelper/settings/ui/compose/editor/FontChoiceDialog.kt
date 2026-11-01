@@ -20,28 +20,40 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.xiyunmn.qdhelper.settings.api.SettingsFontChoiceController
 import com.xiyunmn.qdhelper.settings.api.SettingsFontPreview
+import com.xiyunmn.qdhelper.settings.api.SettingsDynamicChoiceItem
 import com.xiyunmn.qdhelper.settings.api.SettingsRow
 import com.xiyunmn.qdhelper.settings.ui.compose.state.SettingsController
 import com.xiyunmn.qdhelper.shared.compose.ModuleFloatingDialog
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 
 @Composable
 internal fun FontChoiceDialog(row: SettingsRow.DynamicChoice, fonts: SettingsFontChoiceController,
     controller: SettingsController, onDismiss: () -> Unit) {
     val revision = controller.revision.intValue
-    val (options, selected) = remember(fonts, revision) {
-        fonts.items(controller.activity) to fonts.selectedKey(controller.activity)
-    }
+    val libraryRevision = rememberFontLibraryRevision(fonts)
     val context = controller.activity.applicationContext
-    // Keep the last sample until its replacement is ready. Unrelated preference revisions
-    // must not clear it or restart loading, including the observer's second save notification.
-    val preview by produceState<SettingsFontPreview?>(null, fonts, selected) {
-        value = withContext(Dispatchers.IO) {
-            runCatching { fonts.preview(context, selected) }
-                .getOrElse { SettingsFontPreview(message = "字体无法加载，请返回字体库检查文件") }
+    val selected = remember(fonts, revision, libraryRevision) { fonts.selectedKey(context) }
+    var options by remember(fonts) { mutableStateOf<List<SettingsDynamicChoiceItem>>(emptyList()) }
+    var loading by remember(fonts) { mutableStateOf(true) }
+    var loadFailed by remember(fonts) { mutableStateOf(false) }
+    LaunchedEffect(fonts, revision, libraryRevision) {
+        if (options.isEmpty()) loading = true
+        try {
+            options = withContext(Dispatchers.IO) { fonts.items(context) }
+            loadFailed = false
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            loadFailed = true
+        } finally {
+            if (currentCoroutineContext().isActive) loading = false
         }
     }
+    val preview by rememberFontPreview(fonts, selected, libraryRevision)
     val select: (String?) -> Unit = { choice ->
         val result = fonts.select(controller.activity, choice)
         if (!result.success) controller.notify(result.message.ifBlank { "字体保存失败" })
@@ -63,13 +75,18 @@ internal fun FontChoiceDialog(row: SettingsRow.DynamicChoice, fonts: SettingsFon
                     LazyColumn(Modifier.fillMaxWidth().weight(1f, false).selectableGroup(),
                         contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp)) {
                         item("default") {
-                            FontOption(fonts.defaultTitle, fonts.defaultSummary, selected == null) { select(null) }
+                            FontOption(fonts.defaultTitle, "", selected == null) { select(null) }
                         }
                         items(options, key = { it.key }) { option ->
-                            FontOption(option.title, option.summary.orEmpty(), selected == option.key) { select(option.key) }
+                            val namePreview by rememberFontPreview(fonts, option.key, libraryRevision)
+                            FontOption(option.title, option.summary.orEmpty(), selected == option.key, namePreview) { select(option.key) }
                         }
-                        if (options.isEmpty()) item("empty") {
-                            Text("暂无导入字体，请返回字体库添加", Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
+                        if (options.isEmpty() || loadFailed) item("empty") {
+                            Text(when {
+                                loading -> "正在读取字体…"
+                                loadFailed -> "字体库读取失败，请关闭后重试"
+                                else -> "暂无导入字体，请返回字体库添加"
+                            }, Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
                                 fontSize = 13.sp, color = colors.onSurfaceVariant)
                         }
                     }
@@ -94,17 +111,19 @@ internal fun FontChoiceDialog(row: SettingsRow.DynamicChoice, fonts: SettingsFon
 }
 
 @Composable
-private fun FontOption(title: String, filename: String, selected: Boolean, onClick: () -> Unit) {
+private fun FontOption(title: String, filename: String, selected: Boolean, preview: SettingsFontPreview? = null, onClick: () -> Unit) {
     val colors = MaterialTheme.colorScheme
+    val family = preview?.typeface?.let { remember(it) { FontFamily(it) } } ?: FontFamily.Default
     Surface(shape = RoundedCornerShape(12.dp), color = if (selected) colors.primary.copy(alpha = .08f) else Color.Transparent) {
         Row(Modifier.fillMaxWidth().selectable(selected, role = Role.RadioButton, onClick = onClick)
             .heightIn(min = 52.dp).padding(start = 10.dp, end = 12.dp, top = 4.dp, bottom = 4.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(title, fontSize = 15.sp, lineHeight = 21.sp, color = colors.onSurface,
-                    fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Text(filename, fontSize = 11.sp, lineHeight = 15.sp, color = colors.onSurfaceVariant,
+                Text(title, fontSize = 16.sp, lineHeight = 22.sp, color = colors.onSurface, fontFamily = family,
+                    fontWeight = FontWeight.Normal, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (filename.isNotBlank()) Text(filename, fontSize = 11.sp, lineHeight = 15.sp, color = colors.onSurfaceVariant,
                     maxLines = 1, overflow = TextOverflow.Ellipsis)
+                preview?.message?.let { Text(it, fontSize = 11.sp, lineHeight = 15.sp, color = colors.onSurfaceVariant) }
             }
             RadioButton(selected, onClick = null, modifier = Modifier.size(20.dp))
         }

@@ -6,6 +6,7 @@ object SettingsPageIds {
     val STARTUP = SettingsPageId("startup")
     val READER = SettingsPageId("reader")
     val READER_FONT_MANAGER = SettingsPageId("reader-font-manager")
+    val READER_FONT_EFFECTS = SettingsPageId("reader-font-effects")
     val BOOKSHELF = SettingsPageId("bookshelf")
     val NAVIGATION = SettingsPageId("navigation")
     val GLASS_BARS = SettingsPageId("glass-bars")

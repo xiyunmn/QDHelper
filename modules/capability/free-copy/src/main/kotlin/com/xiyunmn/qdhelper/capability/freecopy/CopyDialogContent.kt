@@ -72,7 +72,7 @@ internal fun copyDialogColors(palette: CopyPalette): ColorScheme {
     val card = Color(palette.card)
     val text = Color(palette.text)
     val muted = Color(palette.muted)
-    val container = lerp(surface, brand, if (palette.night) .20f else .10f)
+    val container = lerp(surface, brand, if (palette.night) .24f else .10f)
     // Never inherit M3's purple onPrimary after replacing its primary with the host red.
     val onBrand = if (1.05f / (brand.luminance() + .05f) >= 3f) Color.White else Color.Black
     return (if (palette.night) darkColorScheme() else lightColorScheme()).copy(

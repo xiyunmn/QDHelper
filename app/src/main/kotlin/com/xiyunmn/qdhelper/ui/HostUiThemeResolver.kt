@@ -8,6 +8,7 @@ import com.xiyunmn.qdhelper.host.api.target.HostTargetResolver
 import com.xiyunmn.qdhelper.host.api.target.UiThemeTargetKeys
 import com.xiyunmn.qdhelper.shared.ui.HostThemeResolver
 import com.xiyunmn.qdhelper.shared.ui.UiColors
+import java.lang.reflect.Modifier
 
 internal object HostUiThemeResolver : HostThemeResolver {
     private val roleMethods = mapOf(
@@ -15,7 +16,7 @@ internal object HostUiThemeResolver : HostThemeResolver {
         "text" to "getBookShelfFont",
         "muted" to "getBookShelfFontLight",
         "onSurface" to "getBookShelfFontOnSurface",
-        "brand" to "getBookShelfFontHLight",
+        "brand" to "getBookShelfSurfaceIcon",
         "divider" to "getBookShelfBorder01",
     )
 
@@ -36,11 +37,11 @@ internal object HostUiThemeResolver : HostThemeResolver {
     override fun color(context: Context, role: String): Int? {
         val methodName = roleMethods[role] ?: return null
         val raw = runCatching {
-            Class.forName(
-                "com.qidian.QDReader.component.config.QDAppConfigHelper",
-                false,
-                context.classLoader,
-            ).getMethod(methodName).invoke(null) as? String
+            val helper = Class.forName("com.qidian.QDReader.component.config.QDAppConfigHelper", false, context.classLoader)
+            val companion = helper.fields.singleOrNull {
+                Modifier.isStatic(it.modifiers) && it.type.name == "${helper.name}\$Companion"
+            }?.get(null) ?: return@runCatching null
+            companion.javaClass.getMethod(methodName).invoke(companion) as? String
         }.getOrNull()
         val value = raw?.trim()?.takeIf { it.isNotEmpty() } ?: return null
         val normalized = when {

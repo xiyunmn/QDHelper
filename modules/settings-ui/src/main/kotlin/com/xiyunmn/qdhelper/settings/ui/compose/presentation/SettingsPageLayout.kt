@@ -23,7 +23,7 @@ internal fun settingsPageBlocks(catalog: SettingsPresentationCatalog, destinatio
         "reading" -> {
             group("reader-clean"); group("copy"); group("background")
             add(SettingsPageBlock("group:fonts", "字体",
-                catalog.rowsFor("fonts").filterNot { it.id in sharedFontLibraryLinks }, links = listOf("font-library")))
+                catalog.rowsFor("fonts").filterNot { it.id in sharedFontLibraryLinks }, links = listOf("font-library", "font-effects")))
         }
         "interface" -> {
             links("layout", "page-customization")

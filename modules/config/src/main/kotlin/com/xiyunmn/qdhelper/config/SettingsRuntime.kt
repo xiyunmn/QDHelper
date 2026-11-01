@@ -40,6 +40,9 @@ object SettingsRuntime {
         return featureEnabled(context, SettingIds.KEY_DISABLE_UPLOAD_WATERMARK)
     }
 
+    fun isRoleCardWatermarkBlockEnabled(context: Context? = null): Boolean =
+        featureEnabled(context, SettingIds.KEY_DISABLE_ROLE_CARD_WATERMARK)
+
     fun isSplashAdBlockEnabled(context: Context? = null): Boolean {
         return featureEnabled(context, SettingIds.KEY_BLOCK_SPLASH_AD)
     }
@@ -230,6 +233,9 @@ object SettingsRuntime {
     fun isCustomGlobalFontEnabled(context: Context? = null): Boolean {
         return featureEnabled(context, SettingIds.KEY_CUSTOM_GLOBAL_FONT_ENABLED)
     }
+
+    fun fontEffects(scope: FontEffectScope, context: Context? = null): FontEffectSettings =
+        FontEffectSettings.decode(prefsOrNull(context)?.getString(scope.settingKey, "").orEmpty())
 
     fun isBookshelfNightModeSameAsDayEnabled(context: Context? = null): Boolean {
         return featureEnabled(context, SettingIds.KEY_BOOKSHELF_NIGHT_MODE_SAME_AS_DAY)

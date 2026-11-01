@@ -91,6 +91,7 @@ data class SettingsManagedListItem(
     val summary: String? = null,
     val active: Boolean = false,
     val badge: String? = null,
+    val note: String? = null,
 )
 
 data class SettingsManagedListActionResult(

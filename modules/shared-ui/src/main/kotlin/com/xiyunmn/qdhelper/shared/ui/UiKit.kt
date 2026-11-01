@@ -5,6 +5,7 @@ import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.util.TypedValue
+import android.view.ContextThemeWrapper
 import android.view.View
 import android.view.ViewGroup
 import android.view.Window
@@ -52,7 +53,8 @@ object UiColors {
         val hostPanel = hostThemeResolver?.color(context, "surface")
         Panel = hostPanel
             ?.takeIf { color -> isSurfaceCompatible(color, isNight) }
-            ?: resolveThemeColor(context, android.R.attr.colorBackground)
+            // Module panels share the host application theme, including on Flutter-only pages.
+            ?: resolveThemeColor(ContextThemeWrapper(context, context.applicationInfo.theme), android.R.attr.colorBackground)
                 ?.takeIf { color -> isSurfaceCompatible(color, isNight) }
             ?: fallbackPanel
         Card = if (isNight) {

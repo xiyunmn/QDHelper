@@ -9,6 +9,7 @@ import com.xiyunmn.qdhelper.settings.api.SettingsFontPreview
 import com.xiyunmn.qdhelper.settings.api.SettingsDynamicChoiceItem
 import com.xiyunmn.qdhelper.settings.api.SettingsManagedListActionResult
 import com.xiyunmn.qdhelper.shared.fonts.FontLibraryStore
+import com.xiyunmn.qdhelper.shared.fonts.FontLibraryChanges
 import com.xiyunmn.qdhelper.shared.fonts.FontRole
 import com.xiyunmn.qdhelper.shared.fonts.FontSelectionStore
 import com.xiyunmn.qdhelper.shared.fonts.FontTypefaceCache
@@ -36,6 +37,9 @@ internal class FontRoleChoiceController(
         val face = FontTypefaceCache.load(path, if (role == FontRole.GLOBAL_EMPHASIS) Typeface.BOLD else null)
         return SettingsFontPreview(face, if (face == null) "字体无法加载，请返回字体库检查文件" else null)
     }
+
+    override fun addChangedListener(listener: () -> Unit): AutoCloseable =
+        FontLibraryChanges.addListener(listener)
     override fun items(context: Context): List<SettingsDynamicChoiceItem> =
         FontLibraryStore.readFonts(context).map { path ->
             SettingsDynamicChoiceItem(

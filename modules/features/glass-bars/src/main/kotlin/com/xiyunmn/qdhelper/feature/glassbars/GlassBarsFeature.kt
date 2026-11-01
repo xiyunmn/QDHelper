@@ -40,6 +40,7 @@ object GlassBarsFeature : InstallableFeature {
         val bridge = flutter ?: FlutterGlassBridge(::engineAttached).also { flutter = it }
         val wasAvailable = bridge.available
         if (!wasAvailable) bridge.install(module, classLoader)
+        FlutterDetailGlassBar.install(module, classLoader, phase, bridge)
         if (lifecycle == null) {
             lifecycle = ActivityLifecycleCallbacks.subscribe(
                 owner = OwnerId("glass-bars"), id = "qdhelper.glass_bars.activities", priority = -100,

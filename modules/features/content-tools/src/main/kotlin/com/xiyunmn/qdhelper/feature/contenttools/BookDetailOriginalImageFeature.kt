@@ -6,6 +6,8 @@ import android.content.ContextWrapper
 import android.view.View
 import android.widget.Toast
 import com.xiyunmn.qdhelper.feature.api.runtime.FeatureHooks
+import com.xiyunmn.qdhelper.feature.api.runtime.FlutterBookDetailRuntime
+import com.xiyunmn.qdhelper.feature.api.runtime.FlutterSemanticsSupport
 import com.xiyunmn.qdhelper.feature.api.runtime.ActivityLifecycleCallbacks
 import com.xiyunmn.qdhelper.feature.api.runtime.FeatureResources
 import com.xiyunmn.qdhelper.feature.api.runtime.InstallableFeature
@@ -41,6 +43,11 @@ object BookDetailOriginalImageFeature : InstallableFeature {
         phase: String,
     ) {
         if (!QDReaderHost.isMainProcess(processName)) return
+        FlutterBookDetailRuntime.install(module, classLoader, phase, "book-original-image") {
+            SettingsRuntime.isBookDetailCoverOriginalEnabled(it) || SettingsRuntime.isBookDetailRoleAvatarOriginalEnabled(it)
+        }
+        FlutterBookDetailImages.register(::loadCover)
+        FlutterSemanticsSupport.install(module, classLoader, phase)
         val coverInstalled = installCoverSubscription()
         val roleInstalled = installRoleHook(module, classLoader)
         val roleListPageInstalled = installRoleListPageHook(module, classLoader)
@@ -62,6 +69,8 @@ object BookDetailOriginalImageFeature : InstallableFeature {
                     activity.window?.decorView?.post { attachCover(activity) }
                 }
             },
+            paused = FlutterBookDetailImages::detach,
+            destroyed = FlutterBookDetailImages::destroyed,
         ) ?: return false
         coverSubscription = registration
         return true
@@ -157,6 +166,15 @@ object BookDetailOriginalImageFeature : InstallableFeature {
             }.onFailure { throwable ->
                 FeatureHooks.e("More roles original image bind failed", throwable)
             }
+        }
+    }
+
+    private fun loadCover(context: Context, bookId: Long): OriginalImageData? {
+        val gateway = BookCoverGateways.forClassLoader(context.classLoader)
+        return try {
+            gateway.loadCover(bookId.toString())?.let { OriginalImageData(it.bytes, it.mediaType, it.extension) }
+        } finally {
+            (gateway as? AutoCloseable)?.close()
         }
     }
 

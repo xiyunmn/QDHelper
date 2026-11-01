@@ -15,6 +15,8 @@ object FontTypefaceCache {
         val lastModified: Long,
         val fileKey: String?,
         val style: Int?,
+        val weight: Int,
+        val isolationKey: String?,
     )
 
     private val cache = LinkedHashMap<CacheKey, Typeface>(MAX_ENTRIES, 0.75f, true)
@@ -22,11 +24,11 @@ object FontTypefaceCache {
     private val changeSubscription = FontLibraryChanges.addListener(::clear)
 
     @Synchronized
-    fun load(path: String, style: Int? = null): Typeface? {
+    fun load(path: String, style: Int? = null, weight: Int = 0, isolationKey: String? = null): Typeface? {
         if (path.isBlank()) return null
         val file = File(path)
         val signature = FontLibraryStore.fileSignature(file) ?: return null
-        val key = CacheKey(signature.path, signature.length, signature.lastModified, signature.fileKey, style)
+        val key = CacheKey(signature.path, signature.length, signature.lastModified, signature.fileKey, style, weight, isolationKey)
         // A replacement at the same path must not leave old Typeface instances in the map.
         val stale = cache.keys.iterator()
         while (stale.hasNext()) {
@@ -40,8 +42,11 @@ object FontTypefaceCache {
         cache[key]?.let { return it }
         if (!FontLibraryStore.validateTypeface(file)) return null
         return runCatching {
-            val base = Typeface.createFromFile(file)
-            val resolved = style?.let { Typeface.create(base, it) } ?: base
+            // A file-backed Builder avoids the asset/style caches sharing a native role with a UI preview.
+            val base = if (isolationKey == null) Typeface.createFromFile(file)
+                else Typeface.Builder(file).build() ?: return null
+            val styled = style?.let { Typeface.create(base, it) } ?: base
+            val resolved = if (weight == 0) styled else Typeface.create(styled, weight.coerceIn(100, 900), styled.isItalic)
             cache[key] = resolved
             while (cache.size > MAX_ENTRIES) {
                 val iterator = cache.entries.iterator()

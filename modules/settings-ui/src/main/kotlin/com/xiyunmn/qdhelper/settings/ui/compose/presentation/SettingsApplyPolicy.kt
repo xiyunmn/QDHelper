@@ -36,6 +36,7 @@ internal object SettingsApplyPolicy {
         captured = true
     }
     fun mode(row: SettingsRow): ApplyMode = when {
+        row.id == "reader-font.effects" -> ApplyMode.HostRestart
         row is SettingsRow.Action || row is SettingsRow.Hint || row is SettingsRow.ExternalLink || row is SettingsRow.PageLink -> ApplyMode.Immediate
         row.id == "core.module-enabled" -> if (baseline["module.enabled"] == false && conditionalInstall.any(ConfigRuntime::readBoolean)) ApplyMode.HostRestart else ApplyMode.Immediate
         row.id.startsWith("glass-bars.") || row.id.startsWith("read_time.") -> ApplyMode.Immediate
