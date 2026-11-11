@@ -1,6 +1,7 @@
 package com.xiyunmn.qdhelper.feature.api.runtime
 
 import android.app.Activity
+import android.view.View
 import com.xiyunmn.qdhelper.foundation.runtime.HostSessionStore
 import com.xiyunmn.qdhelper.host.api.gateway.NativeNetRequest
 import com.xiyunmn.qdhelper.host.api.gateway.NativeNetResponseTransformer
@@ -18,6 +19,15 @@ object FlutterBookDetailRuntime {
         val description: String,
         val roles: List<Role>,
     )
+
+    fun coverPreviewClose(view: View, nodes: List<FlutterSemanticsSupport.Node>): FlutterSemanticsSupport.Node? {
+        if (nodes.size > 16) return null
+        if (nodes.none { it.image && it.bounds.width() > view.width / 2 && it.bounds.height() > view.height / 3 }) return null
+        return nodes.singleOrNull {
+            it.clickable && it.bounds.width() < view.width / 4 && it.bounds.height() < view.height / 5 &&
+                it.bounds.centerX() < view.width / 4 && it.bounds.centerY() < view.height / 4
+        }
+    }
 
     private val books = linkedMapOf<Long, Book>()
     private val consumers = java.util.concurrent.ConcurrentHashMap<String, (android.content.Context?) -> Boolean>()

@@ -139,6 +139,7 @@ internal object FlutterDetailGlassBar {
     ) : AutoCloseable {
         private var closed = false
         private var focused = activity.hasWindowFocus()
+        private var coverPreview = false
         private var nodes = emptyList<FlutterSemanticsSupport.Node>()
         private val sourceHeight = OwnedProperty({ source.layoutParams.height }, { height ->
             source.layoutParams = source.layoutParams.apply { this.height = height }
@@ -176,7 +177,12 @@ internal object FlutterDetailGlassBar {
         fun update(all: List<FlutterSemanticsSupport.Node>) {
             if (closed) return
             if (!enabled(activity)) { close(); return }
-            nodes = resolveControls(source, all)
+            val controls = resolveControls(source, all)
+            if (FlutterBookDetailRuntime.coverPreviewClose(source, all) != null) coverPreview = true
+            else if (controls.isNotEmpty()) coverPreview = false
+            // Keep the bar hidden through transient empty semantics until detail controls return.
+            nodes = if (coverPreview) emptyList() else controls
+            bar.visibility = if (coverPreview) View.INVISIBLE else View.VISIBLE
             updateViewport()
             if (nodes.isEmpty()) {
                 actions.forEach { it.node = null }

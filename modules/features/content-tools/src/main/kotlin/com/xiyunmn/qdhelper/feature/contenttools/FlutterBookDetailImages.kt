@@ -119,13 +119,8 @@ internal object FlutterBookDetailImages {
     ) {
         val bookId = FlutterBookDetailRuntime.bookId(activity)
         val parent = view.parent as? FrameLayout
-        val image = nodes.filter { it.image && it.bounds.width() > view.width / 2 && it.bounds.height() > view.height / 3 }
-            .maxByOrNull { it.bounds.width().toLong() * it.bounds.height() }
-        val close = image?.let { nodes.singleOrNull {
-            it.clickable && it.bounds.width() < view.width / 4 && it.bounds.height() < view.height / 5 &&
-                it.bounds.centerX() < view.width / 4 && it.bounds.centerY() < view.height / 4
-        } }
-        if (bookId == null || parent == null || image == null || close == null || nodes.size > 16 ||
+        val close = FlutterBookDetailRuntime.coverPreviewClose(view, nodes)
+        if (bookId == null || parent == null || close == null ||
             !SettingsRuntime.isBookDetailCoverOriginalEnabled(activity)) {
             detach(activity)
             return
