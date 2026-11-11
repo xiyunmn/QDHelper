@@ -27,6 +27,7 @@ object ReadPageCleanFeature : InstallableFeature {
     ) {
         var installedHooks = 0
 
+        installedHooks += installAddShelfDialogGate(module, classLoader, phase)
         installedHooks += installChapterEndAppendGate(module, classLoader, phase)
         installedHooks += installLastPageListEmpty(module, classLoader, phase, "readPage.lastPage.alsoRead", "getAlsoReadList")
         installedHooks += installLastPageListEmpty(module, classLoader, phase, "readPage.lastPage.recommend", "getRecommendList")
@@ -41,6 +42,24 @@ object ReadPageCleanFeature : InstallableFeature {
         installedHooks += installReaderToolbarAdGate(module, classLoader, phase)
 
         FeatureHooks.i("P1 read-page clean phase finished: phase=$phase, process=$processName, installedHooks=$installedHooks")
+    }
+
+    private fun installAddShelfDialogGate(module: HookModule, classLoader: ClassLoader, phase: String): Int {
+        val clazz = FeatureHooks.findClassOrNull(QDReaderHost.Classes.QD_READER_ACTIVITY, classLoader) ?: return 0
+        val method = FeatureHooks.findDeclaredMethodOrNull(clazz, "showAddShelfDialog") ?: return 0
+        if (method.returnType != Boolean::class.javaPrimitiveType || java.lang.reflect.Modifier.isStatic(method.modifiers)) {
+            FeatureHooks.w("Skip readPage.addShelfDialog: unexpected method contract")
+            return 0
+        }
+        return installReturnValue(
+            module = module,
+            id = "readPage.addShelfDialog",
+            method = method,
+            hookId = "qdhelper.read.add_shelf_dialog",
+            phase = phase,
+            shouldBlock = { SettingsRuntime.isReaderAddShelfDialogSuppressed(HostSessionStore.contextOrNull()) },
+            action = "return-false",
+        ) { false }
     }
 
     private fun installChapterEndAppendGate(

@@ -32,6 +32,8 @@ object ReaderSettingsContribution : SettingsContribution {
             title = "阅读页清理",
             order = 100,
             rows = listOf(
+                SettingsRow.Toggle("reader.add-shelf-dialog", "屏蔽加入书架引导弹窗", "隐藏阅读页的加入书架引导，保留手动加入书架操作。", SettingIds.KEY_SUPPRESS_READER_ADD_SHELF_DIALOG,
+                    keywords = setOf("加书架", "加入书架", "引导弹窗")),
                 SettingsRow.Toggle("reader.chapter-end", "精简章末推荐", "拦截章末富内容追加，保留正文分页。", SettingIds.KEY_CLEAN_CHAPTER_END),
                 SettingsRow.Toggle("reader.last-page", "精简书末页推荐", "隐藏书末页推荐、书友圈、衍生和试读模块。", SettingIds.KEY_CLEAN_LAST_PAGE),
                 SettingsRow.Toggle("reader.toolbar-ad", "隐藏阅读页活动浮标", "清空阅读菜单右侧活动浮标。", SettingIds.KEY_HIDE_READER_TOOLBAR_AD),

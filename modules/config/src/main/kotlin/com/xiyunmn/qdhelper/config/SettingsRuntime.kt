@@ -138,6 +138,10 @@ object SettingsRuntime {
         return featureEnabled(context, SettingIds.KEY_SUPPRESS_TEENAGER_ENTER_DIALOG)
     }
 
+    fun isReaderAddShelfDialogSuppressed(context: Context? = null): Boolean {
+        return featureEnabled(context, SettingIds.KEY_SUPPRESS_READER_ADD_SHELF_DIALOG)
+    }
+
     fun isChapterEndCleanEnabled(context: Context? = null): Boolean {
         return featureEnabled(context, SettingIds.KEY_CLEAN_CHAPTER_END)
     }
@@ -239,6 +243,10 @@ object SettingsRuntime {
 
     fun isBookshelfNightModeSameAsDayEnabled(context: Context? = null): Boolean {
         return featureEnabled(context, SettingIds.KEY_BOOKSHELF_NIGHT_MODE_SAME_AS_DAY)
+    }
+
+    fun isTopTreasureTipSuppressed(context: Context? = null): Boolean {
+        return featureEnabled(context, SettingIds.KEY_SUPPRESS_TOP_TREASURE_TIP)
     }
 
     fun isBookshelfHoverAdHidden(context: Context? = null): Boolean {

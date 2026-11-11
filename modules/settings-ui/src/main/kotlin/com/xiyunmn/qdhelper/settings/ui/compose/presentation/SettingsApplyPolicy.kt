@@ -36,6 +36,8 @@ internal object SettingsApplyPolicy {
         captured = true
     }
     fun mode(row: SettingsRow): ApplyMode = when {
+        row.id == "bookshelf.treasure-tip" -> ApplyMode.Immediate
+        row.id == "reader.add-shelf-dialog" -> ApplyMode.Immediate
         row.id == "reader-font.effects" -> ApplyMode.HostRestart
         row is SettingsRow.Action || row is SettingsRow.Hint || row is SettingsRow.ExternalLink || row is SettingsRow.PageLink -> ApplyMode.Immediate
         row.id == "core.module-enabled" -> if (baseline["module.enabled"] == false && conditionalInstall.any(ConfigRuntime::readBoolean)) ApplyMode.HostRestart else ApplyMode.Immediate

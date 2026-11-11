@@ -45,8 +45,33 @@ object BookshelfFeature : InstallableFeature {
             ?.firstOrNull { it.name == "lightMode" }
 
         val installedHooks = installDarkModeSameAsDay(module, method, lightModeField, phase) +
-            installConfigHelperSameAsDay(module, classLoader, processName, bookshelfConfigClass, phase)
+            installConfigHelperSameAsDay(module, classLoader, processName, bookshelfConfigClass, phase) +
+            installTreasureTipGate(module, classLoader, phase)
         FeatureHooks.i("P1 bookshelf phase finished: phase=$phase, process=$processName, installedHooks=$installedHooks")
+    }
+
+    private fun installTreasureTipGate(module: HookModule, classLoader: ClassLoader, phase: String): Int {
+        val manager = FeatureHooks.findClassOrNull(QDReaderHost.Classes.SCREEN_ALERT_MANAGER, classLoader) ?: return 0
+        val enqueue = FeatureHooks.declaredMethodsNamed(manager, "enqueueAlert").singleOrNull {
+            it.returnType == Void.TYPE && it.parameterCount == 1 && !Modifier.isStatic(it.modifiers)
+        } ?: return 0
+        // The alert entity exposes one String getter: its source identifier.
+        val sourceGetter = FeatureHooks.allDeclaredMethods(enqueue.parameterTypes.single()).singleOrNull {
+            it.parameterCount == 0 && it.returnType == String::class.java && !Modifier.isStatic(it.modifiers)
+        }
+        if (sourceGetter == null) {
+            FeatureHooks.w("Top treasure tip unavailable: ambiguous alert source contract")
+            return 0
+        }
+        val installed = FeatureHooks.hookAround(module, enqueue, "bookshelf.treasureTip", "qdhelper.bookshelf.treasure_tip") { chain ->
+            if (!SettingsRuntime.isTopTreasureTipSuppressed(HostSessionStore.contextOrNull())) return@hookAround chain.proceed()
+            val alert = chain.args.firstOrNull() ?: return@hookAround chain.proceed()
+            if (FeatureHooks.invoke(sourceGetter, alert) != "push_large_reward") return@hookAround chain.proceed()
+            logHit("bookshelf.treasureTip", "skip-treasure-banner")
+            null
+        }
+        if (installed) FeatureHooks.i("Top treasure tip gate installed: phase=$phase")
+        return if (installed) 1 else 0
     }
 
     private fun installDarkModeSameAsDay(

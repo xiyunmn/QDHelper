@@ -47,6 +47,7 @@ feature.dialog.suppress_privacy_version	BOOLEAN	false	USER
 feature.dialog.suppress_update_check	BOOLEAN	false	USER
 feature.dialog.suppress_notification_permission	BOOLEAN	false	USER
 feature.dialog.suppress_teenager_enter_dialog	BOOLEAN	false	USER
+feature.read_page.suppress_add_shelf_dialog	BOOLEAN	false	USER
 feature.read_page.clean_chapter_end	BOOLEAN	false	USER
 feature.read_page.clean_last_page	BOOLEAN	false	USER
 feature.read_page.hide_toolbar_ad	BOOLEAN	false	USER
@@ -74,6 +75,7 @@ feature.ui.hide_bookshelf_hover_ad	BOOLEAN	false	USER
 feature.ui.hide_bottom_tab_red_dot	BOOLEAN	false	USER
 feature.ui.hide_account_tab_red_dot	BOOLEAN	false	USER
 feature.daily_reading.hide_game_ad	BOOLEAN	false	USER
+feature.bookshelf.suppress_top_treasure_tip	BOOLEAN	false	USER
 feature.bookshelf.hide_book_activity_tag	BOOLEAN	false	USER
 feature.bookshelf.hide_update_notice	BOOLEAN	false	USER
 feature.bookshelf.hide_reading_time_card	BOOLEAN	false	USER

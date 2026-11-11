@@ -8,6 +8,7 @@ object HostSymbols {
         const val SPLASH_ACTIVITY = "com.qidian.QDReader.ui.activity.SplashActivity"
         const val SPLASH_MANAGER = "com.qidian.QDReader.bll.splash.SplashManager"
         const val SPLASH_DOWNLOAD_UTIL = "com.qidian.QDReader.util.SplashDownloadUtil"
+        const val SCREEN_ALERT_MANAGER = "com.qidian.QDReader.component.alert.ScreenAlertManager"
         const val MAIN_GROUP_ACTIVITY = "com.qidian.QDReader.ui.activity.MainGroupActivity"
         const val NEW_BOOK_INVEST_DETAIL_ACTIVITY =
             "com.qidian.QDReader.ui.activity.NewBookInvestDetailActivity"

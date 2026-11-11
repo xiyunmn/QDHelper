@@ -35,14 +35,14 @@ internal class SettingsPresentationCatalog(contributions: List<SettingsContribut
         page("account", "账号与自动化", "home", "签到 · 投资 · 时长 · 福利")
         page("privacy", "弹窗与上报", "home", "弹窗 · DNS · 上报")
         page("tools", "工具与诊断", "home", "解析 · 指纹 · 日志 · 配置")
-        page("reader-clean", "阅读界面", "reading", ids = "reader.watermark reader.chapter-end reader.last-page reader.toolbar-ad")
+        page("reader-clean", "阅读界面", "reading", ids = "reader.watermark reader.add-shelf-dialog reader.chapter-end reader.last-page reader.toolbar-ad")
         page("copy", "复制与分享", "reading", ids = "reader.body-copy reader.paragraph-action-order reader.free-copy reader.free-copy-mode reader.share-limit")
         page("background", "阅读外观", "reading", ids = "reader.background-local-unlock reader.background-long-press-save")
         page("fonts", "字体", "reading", "阅读正文与其他界面使用独立角色", "reader-font.enabled reader-font.selection reader-font.manager-link reader-font.global-enabled reader-font.global-regular reader-font.global-emphasis reader-font.global-manager-link")
         page("font-library", "共享字体库", "fonts", "阅读正文与其他界面共用", "reader-font.manager-import reader-font.manager-list reader-font.manager-clear")
         page("font-effects", "字体效果调整", "fonts", "字重 · 字号 · 字宽 · 字间距", "reader-font.effects")
         page("splash", "启动与开屏", "interface", ids = "startup.block-ad startup.skip-image startup.dark-logo startup.sync startup.local-enabled startup.local-pick startup.local-clear startup.custom-enabled startup.custom-url startup.official-local-unlock startup.official-enabled startup.official-url startup.official-paper")
-        page("bookshelf", "书架与首页", "interface", ids = "bookshelf.day-palette bookshelf.hover-ad bookshelf.top-activity-ad bookshelf.left-top-activity bookshelf.daily-reading-game-ad bookshelf.book-activity-tag bookshelf.update-notice bookshelf.reading-time-card bookshelf.home-top-actions")
+        page("bookshelf", "书架与首页", "interface", ids = "bookshelf.day-palette bookshelf.treasure-tip bookshelf.hover-ad bookshelf.top-activity-ad bookshelf.left-top-activity bookshelf.daily-reading-game-ad bookshelf.book-activity-tag bookshelf.update-notice bookshelf.reading-time-card bookshelf.home-top-actions")
         page("navigation", "底部导航", "interface", ids = "glass-bars.page navigation.red-dot navigation.account-unread navigation.activity-tab navigation.tab-order")
         val glassRows = listOf("glass-bars.enabled") + listOf("main", "detail", "directory").flatMap { place ->
             listOf("enabled", "height", "width", "bottom-gap").map { "glass-bars.$place.$it" }

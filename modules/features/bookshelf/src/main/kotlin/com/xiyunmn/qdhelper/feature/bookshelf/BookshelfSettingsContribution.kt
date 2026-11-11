@@ -23,6 +23,8 @@ object BookshelfSettingsContribution : SettingsContribution {
             order = 100,
             rows = listOf(
                 SettingsRow.Toggle("bookshelf.day-palette", "夜间书架沿用日间配色", "将书架 DarkMode 配置替换为 LightMode。", SettingIds.KEY_BOOKSHELF_NIGHT_MODE_SAME_AS_DAY),
+                SettingsRow.Toggle("bookshelf.treasure-tip", "屏蔽顶部宝箱提示", "屏蔽书架等页面顶部的全站打赏宝箱横幅，保留其他消息提示。", SettingIds.KEY_SUPPRESS_TOP_TREASURE_TIP,
+                    keywords = setOf("宝箱", "黄金宝箱", "白银宝箱", "全站广播", "顶部提示")),
                 SettingsRow.Toggle("bookshelf.hover-ad", "隐藏书架悬浮广告", "短路书架悬浮广告选择回调。", SettingIds.KEY_HIDE_BOOKSHELF_HOVER_AD),
                 SettingsRow.Toggle("bookshelf.top-activity-ad", "隐藏书架顶部活动广告", "隐藏顶部运营活动横幅、背景和活动入口。", SettingIds.KEY_HIDE_BOOKSHELF_TOP_ACTIVITY_AD),
                 SettingsRow.Toggle("bookshelf.left-top-activity", "隐藏书架左上角活动入口", "隐藏云控的活动入口，恢复阅读时长区域。", SettingIds.KEY_HIDE_BOOKSHELF_LEFT_TOP_ACTIVITY_CARD),
