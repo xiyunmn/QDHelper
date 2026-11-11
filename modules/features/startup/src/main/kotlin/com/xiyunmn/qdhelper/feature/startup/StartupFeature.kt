@@ -83,7 +83,7 @@ object StartupFeature : InstallableFeature {
         classLoader: ClassLoader,
         phase: String,
     ): Int {
-        val helperClass = FeatureHooks.findClassOrNull(QDReaderHost.Classes.QD_APP_CONFIG_HELPER, classLoader) ?: return 0
+        val helperClass = FeatureHooks.findClassOrNull(QDReaderHost.Classes.QD_APP_CONFIG_HELPER_COMPANION, classLoader) ?: return 0
         val bootWallPapersClass = FeatureHooks.findClassOrNull(QDReaderHost.Classes.BOOT_WALL_PAPERS, classLoader) ?: return 0
         val paperClass = FeatureHooks.findClassOrNull(QDReaderHost.Classes.CONFIG_PAPER, classLoader) ?: return 0
         val methods = FeatureHooks.allDeclaredMethods(helperClass)

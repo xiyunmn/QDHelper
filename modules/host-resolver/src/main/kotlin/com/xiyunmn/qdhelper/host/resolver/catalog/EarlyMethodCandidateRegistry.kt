@@ -32,6 +32,12 @@ internal object EarlyMethodCandidateRegistry {
                 .filter(::hasAutoUpdateJudianShape).distinct()
             return owners.flatMap { ReflectionAccess.methodsDeclaredBy(it).toList() }
         }
+        // Reflection cannot apply the DexKit body anchors to these no-argument methods.
+        val methodName = when (key) {
+            StartupTargetKeys.splashActivityInitCustom -> "initCustomSplashScreen"
+            StartupTargetKeys.splashActivityInitDefault -> "initDefaultSplash"
+            else -> null
+        }
         return ownersByTarget[key.id].orEmpty()
             .asSequence()
             .mapNotNull { ownerName -> ReflectionAccess.findClass(classLoader, ownerName) }
@@ -39,6 +45,7 @@ internal object EarlyMethodCandidateRegistry {
                 runCatching { ReflectionAccess.methodsDeclaredBy(owner).asSequence() }
                     .getOrDefault(emptySequence())
             }
+            .filter { methodName == null || it.name == methodName }
             .toList()
     }
 }
