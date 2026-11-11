@@ -7,6 +7,7 @@ import com.xiyunmn.qdhelper.host.api.target.BookshelfTargetKeys
 import com.xiyunmn.qdhelper.host.api.target.BookCoverTargetKeys
 import com.xiyunmn.qdhelper.host.api.target.CircleTargetKeys
 import com.xiyunmn.qdhelper.host.api.target.ContentToolsTargetKeys
+import com.xiyunmn.qdhelper.host.api.target.MediaExportTargetKeys
 import com.xiyunmn.qdhelper.host.api.target.DiagnosticsTargetKeys
 import com.xiyunmn.qdhelper.host.api.target.DialogTargetKeys
 import com.xiyunmn.qdhelper.host.api.target.MaintenanceTargetKeys
@@ -232,6 +233,8 @@ object HostTargetCatalog {
     private val REVISION_4_TARGET_IDS = emptySet<String>()
 
     private val REVISION_2_TARGET_IDS = setOf(
+        "content_tools.media_export.voice_list_bind",
+        "content_tools.media_export.voice_detail_bind",
         "dialog.notification.request",
         "dialog.notification.scene_guide",
         "ui.bookshelf.new_list_book.bind",
@@ -288,7 +291,7 @@ object HostTargetCatalog {
         ContentToolsTargetKeys.profileCapsuleApi,
         ContentToolsTargetKeys.profileCvApi,
         MaintenanceTargetKeys.userLookupSearchRequest,
-    ) + CircleTargetKeys.all + BookshelfTargetKeys.all + NavigationTargetKeys.all +
+    ) + CircleTargetKeys.all + MediaExportTargetKeys.all + BookshelfTargetKeys.all + NavigationTargetKeys.all +
         PageCustomizationTargetKeys.all + ShieldTargetKeys.all +
         DialogTargetKeys.all + BookCoverTargetKeys.all +
         ReaderFontTargetKeys.all + StartupTargetKeys.all +

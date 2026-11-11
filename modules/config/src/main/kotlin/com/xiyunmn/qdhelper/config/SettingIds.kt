@@ -117,6 +117,8 @@ object SettingIds {
     const val KEY_BOOK_DETAIL_ROLE_AVATAR_ORIGINAL_ENABLED = "feature.page.book_detail.role_avatar_original"
     const val KEY_CARD_PLAZA_LOCAL_UNLOCK_ENABLED = "feature.page.card_plaza.local_unlock"
     const val KEY_CARD_PREVIEW_LONG_PRESS_SAVE_ENABLED = "feature.page.card_preview.long_press_save"
+    const val KEY_STICKER_EXPORT_ENABLED = "feature.page.stickers.export"
+    const val KEY_COMMENT_VOICE_EXPORT_ENABLED = "feature.page.chapter_comment.voice_export"
     const val KEY_PROFILE_AVATAR_ORIGINAL_ENABLED = "feature.page.profile.avatar_original"
     const val KEY_PROFILE_USER_ID_ENABLED = "feature.page.profile.user_id"
     const val KEY_PROFILE_PRIVACY_SECOND_PAGE_RESTORE_ENABLED = "feature.page.profile.privacy_second_page_restore"

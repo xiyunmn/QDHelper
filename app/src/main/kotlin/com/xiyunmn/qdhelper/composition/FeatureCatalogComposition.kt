@@ -9,6 +9,9 @@ import com.xiyunmn.qdhelper.host.api.target.AccountTargetKeys
 import com.xiyunmn.qdhelper.host.api.target.BookshelfTargetKeys
 import com.xiyunmn.qdhelper.host.api.target.CircleTargetKeys
 import com.xiyunmn.qdhelper.host.api.target.ContentToolsTargetKeys
+import com.xiyunmn.qdhelper.host.api.target.MediaExportTargetKeys
+import com.xiyunmn.qdhelper.feature.contenttools.StickerExportFeature
+import com.xiyunmn.qdhelper.feature.contenttools.CommentVoiceExportFeature
 import com.xiyunmn.qdhelper.host.api.target.DialogTargetKeys
 import com.xiyunmn.qdhelper.host.api.target.NavigationTargetKeys
 import com.xiyunmn.qdhelper.host.api.target.PageCustomizationTargetKeys
@@ -153,6 +156,12 @@ internal object FeatureCatalogComposition {
             row("content-tools.book-detail-free-copy") { BookDetailFreeCopyFeature },
             row("content-tools.book-detail-original-image") { BookDetailOriginalImageFeature },
             row("content-tools.card-plaza-local-unlock") { CardPlazaUnlockFeature },
+            row("content-tools.sticker-export",
+                requiredTargets = MediaExportTargetKeys.stickers.mapTo(linkedSetOf()) { it.id },
+                enabled = SettingsRuntime::isStickerExportEnabled) { StickerExportFeature },
+            row("content-tools.comment-voice-export",
+                requiredTargets = MediaExportTargetKeys.voice.mapTo(linkedSetOf()) { it.id },
+                enabled = SettingsRuntime::isCommentVoiceExportEnabled) { CommentVoiceExportFeature },
             row("content-tools.profile-h5") { ProfileH5Feature },
             row("content-tools.profile-original-image") { ProfileOriginalImageFeature },
             row("content-tools.profile-user-id") { ProfileUserIdFeature },

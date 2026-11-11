@@ -17,6 +17,7 @@ internal object SettingsApplyPolicy {
     private var captured = false
     private val welfareActions = listOf(SettingIds.KEY_WELFARE_REWARD_AD_SKIP_ENABLED, SettingIds.KEY_WELFARE_COMBO_REWARD_SKIP_ENABLED, SettingIds.KEY_WELFARE_REWARD_POPUP_SUPPRESS_ENABLED)
     private val conditionalInstall = welfareActions + listOf(
+        SettingIds.KEY_STICKER_EXPORT_ENABLED, SettingIds.KEY_COMMENT_VOICE_EXPORT_ENABLED,
         SettingIds.KEY_AUTO_SIGN_IN_ENABLED, SettingIds.KEY_AUTO_INVEST_ENABLED,
         SettingIds.KEY_CUSTOM_DNS_ENABLED,
         SettingIds.KEY_DEBUG_DISCOVERY_ENABLED,
@@ -36,6 +37,8 @@ internal object SettingsApplyPolicy {
         captured = true
     }
     fun mode(row: SettingsRow): ApplyMode = when {
+        row.id in setOf("content-tools.sticker-export", "content-tools.comment-voice-export") && row is SettingsRow.Toggle ->
+            if (installed(row.key)) ApplyMode.PageReload else ApplyMode.HostRestart
         row.id == "bookshelf.treasure-tip" -> ApplyMode.Immediate
         row.id == "reader.add-shelf-dialog" -> ApplyMode.Immediate
         row.id == "reader-font.effects" -> ApplyMode.HostRestart

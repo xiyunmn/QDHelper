@@ -105,6 +105,8 @@ feature.page.book_detail.cover_original	BOOLEAN	false	USER
 feature.page.book_detail.role_avatar_original	BOOLEAN	false	USER
 feature.page.card_plaza.local_unlock	BOOLEAN	false	USER
 feature.page.card_preview.long_press_save	BOOLEAN	false	USER
+feature.page.stickers.export	BOOLEAN	false	USER
+feature.page.chapter_comment.voice_export	BOOLEAN	false	USER
 feature.page.profile.avatar_original	BOOLEAN	false	USER
 feature.page.profile.user_id	BOOLEAN	false	USER
 feature.page.profile.privacy_second_page_restore	BOOLEAN	false	USER

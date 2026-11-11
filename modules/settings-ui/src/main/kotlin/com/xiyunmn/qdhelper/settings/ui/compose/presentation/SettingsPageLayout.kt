@@ -31,7 +31,7 @@ internal fun settingsPageBlocks(catalog: SettingsPresentationCatalog, destinatio
         }
         "content" -> {
             special("shield-entry")
-            group("detail-tools"); group("profile"); group("images"); group("cards")
+            group("detail-tools"); group("profile"); group("images"); group("cards"); group("media-export")
         }
         "account" -> { group("automation"); group("read-time"); group("welfare"); group("lookup") }
         "privacy" -> { group("reports"); group("dns"); group("identity"); group("dialogs") }
@@ -82,7 +82,7 @@ internal val inlineDestinations = mapOf(
     "shield-quick" to "shield",
     "reader-clean" to "reading", "copy" to "reading", "background" to "reading", "fonts" to "reading",
     "splash" to "interface", "bookshelf" to "interface", "navigation" to "interface",
-    "profile" to "content", "detail-tools" to "content", "images" to "content", "cards" to "content",
+    "profile" to "content", "detail-tools" to "content", "images" to "content", "cards" to "content", "media-export" to "content",
     "automation" to "account", "read-time" to "account", "welfare" to "account", "lookup" to "account",
     "reports" to "privacy", "dns" to "privacy", "identity" to "privacy", "dialogs" to "privacy",
     "probes" to "tools", "backup" to "tools", "maintenance" to "tools",

@@ -58,6 +58,7 @@ internal class SettingsPresentationCatalog(contributions: List<SettingsContribut
         page("profile", "个人主页", "content", ids = "content-tools.profile-avatar-original content-tools.profile-user-id content-tools.profile-privacy-second-page")
         page("detail-tools", "书籍详情工具", "content", ids = "content-tools.book-intro-copy content-tools.book-cover-original content-tools.role-avatar-original content-tools.fans-rank")
         page("images", "书友圈与图片", "content", ids = "content-tools.circle-copy content-tools.upload-watermark")
+        page("media-export", "媒体导出", "content", ids = "content-tools.sticker-export content-tools.comment-voice-export")
         page("cards", "卡牌", "content", ids = "content-tools.role-card-watermark content-tools.card-plaza-local-unlock content-tools.card-preview-long-press-save")
         page("automation", "自动任务", "account", ids = "account.auto-sign-in account.auto-invest")
         page("lookup", "用户查找", "account", ids = "maintenance.user-lookup")

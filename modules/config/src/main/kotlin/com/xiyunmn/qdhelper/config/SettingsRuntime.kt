@@ -208,6 +208,12 @@ object SettingsRuntime {
         return featureEnabled(context, SettingIds.KEY_CARD_PREVIEW_LONG_PRESS_SAVE_ENABLED)
     }
 
+    fun isStickerExportEnabled(context: Context? = null): Boolean =
+        featureEnabled(context, SettingIds.KEY_STICKER_EXPORT_ENABLED)
+
+    fun isCommentVoiceExportEnabled(context: Context? = null): Boolean =
+        featureEnabled(context, SettingIds.KEY_COMMENT_VOICE_EXPORT_ENABLED)
+
     fun isProfileAvatarOriginalEnabled(context: Context? = null): Boolean {
         return featureEnabled(context, SettingIds.KEY_PROFILE_AVATAR_ORIGINAL_ENABLED)
     }

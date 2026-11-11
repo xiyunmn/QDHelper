@@ -75,6 +75,20 @@ object ContentToolsSettingsContribution : SettingsContribution {
             ),
         ),
         SettingsSection(
+            id = "content-tools.media-export",
+            page = SettingsPageIds.PAGE_CUSTOMIZATION,
+            title = "媒体导出",
+            order = 580,
+            rows = listOf(
+                SettingsRow.Toggle("content-tools.sticker-export", "表情包批量导出",
+                    "在表情包详情页长按名称，将整包图片保存到相册。", SettingIds.KEY_STICKER_EXPORT_ENABLED,
+                    keywords = setOf("表情包", "动图", "批量保存")),
+                SettingsRow.Toggle("content-tools.comment-voice-export", "章评语音导出",
+                    "长按章评语音即可下载导出，无需先播放。", SettingIds.KEY_COMMENT_VOICE_EXPORT_ENABLED,
+                    keywords = setOf("语音", "音频", "本章说", "下载")),
+            ),
+        ),
+        SettingsSection(
             id = "content-tools.circle",
             page = SettingsPageIds.PAGE_CUSTOMIZATION,
             title = "书友圈",

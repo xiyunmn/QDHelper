@@ -5,6 +5,8 @@ import com.xiyunmn.qdhelper.host.resolver.dexkit.query.AccountNetworkWelfareQuer
 import com.xiyunmn.qdhelper.host.resolver.dexkit.query.ReaderFontQueries
 import com.xiyunmn.qdhelper.host.resolver.dexkit.query.BookCoverQueries
 import com.xiyunmn.qdhelper.host.resolver.dexkit.query.ContentToolsQueries
+import com.xiyunmn.qdhelper.host.resolver.dexkit.query.StickerExportQueries
+import com.xiyunmn.qdhelper.host.resolver.dexkit.query.VoiceExportQueries
 import com.xiyunmn.qdhelper.host.resolver.dexkit.query.DexKitMethodQuery
 import com.xiyunmn.qdhelper.host.resolver.dexkit.query.DeviceIdentityProbeQueries
 import com.xiyunmn.qdhelper.host.resolver.dexkit.query.FontQueries
@@ -72,6 +74,8 @@ internal object TargetQueryCatalog {
             ReaderStartupQueries.circleFreeCopyDetailBindMethods,
             ReaderStartupQueries.circleFreeCopyDetailData,
             ContentToolsQueries.profileHomeResponseConvert,
+            StickerExportQueries.detailBind,
+            *VoiceExportQueries.all.toTypedArray(),
             ContentToolsQueries.profileChapterReviewsApi,
             ContentToolsQueries.profileBookReviewsApi,
             ContentToolsQueries.profilePreloadCallbackSuccess,
