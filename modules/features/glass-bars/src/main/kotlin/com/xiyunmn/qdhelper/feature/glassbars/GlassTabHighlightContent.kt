@@ -31,20 +31,24 @@ internal class GlassTabHighlightContent(private val bar: View, private val strip
                 val view = row.getChildAt(index)
                 Tab(view,
                     listOfNotNull(view.named("view_tab_title_title")),
-                    listOfNotNull(view.named("view_tab_title_icon")),
+                    listOfNotNull(view.named("view_tab_title_icon"), view.named("view_tab_pag_view")),
                     listOfNotNull(view.named("dotImg"), view.named("operationRedDot"), view.named("tagView"),
-                        view.named("attentionAdIcon"), view.named("attentionAdPag"), view.named("view_tab_pag_view")))
+                        view.named("attentionAdIcon"), view.named("attentionAdPag")))
             }
         }
         bar.getLocationOnScreen(origin)
         val visible = tabs.filter { it.view.isShown && it.view.width > 0 }
         val labels = visible.flatMap { it.labels }.filter(View::isShown).map(::bounds)
-        val icons = visible.flatMap { it.icons }.filter(View::isShown).map(::bounds)
+        val icons = visible.mapNotNull { tab ->
+            tab.icons.filter(View::isShown).map(::bounds).reduceOrNull { area, next -> area.apply { union(next) } }
+        }
         if (labels.isEmpty() && icons.isEmpty()) return null // Unknown layout: preserve native rendering.
         val selected = (FeatureHooks.invokeOrNull(currentItem, strip) as? Int)?.let { tabs.getOrNull(it) }
         return GlassTabContent(visible.map { bounds(it.view) }, labels,
             visible.flatMap { it.badges }.filter(View::isShown).map(::bounds), UiColors.Text, UiColors.Brand,
             icons, selected?.view?.takeIf(View::isShown)?.let(::bounds), UiColors.IsNight,
+            // The lens can still overlap an old tab after native selection changes. Keep
+            // selected artwork available there; the current tab keeps its live animation.
             visible.filter { it !== selected }.flatMap { it.icons }.filterIsInstance<ImageView>()
                 .filter { it.isShown && it.width > 0 && it.height > 0 }.mapNotNull(::selectedPreview))
     }

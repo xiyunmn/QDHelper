@@ -25,6 +25,7 @@ import com.xiyunmn.qdhelper.feature.api.runtime.FeatureHooks
 import com.xiyunmn.qdhelper.shared.ui.glass.GlassBarMotion
 import com.xiyunmn.qdhelper.shared.ui.glass.GlassEffectsSpec
 import com.xiyunmn.qdhelper.shared.ui.glass.GlassRenderSurface
+import com.xiyunmn.qdhelper.shared.ui.glass.GlassRenderOutset
 import com.xiyunmn.qdhelper.shared.ui.glass.GlassTabContent
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
@@ -32,7 +33,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
-import kotlin.math.ceil
 
 /** Two draw-only compositions, one explicit module recomposer and one motion frame loop. */
 internal class ComposeGlassBar(
@@ -42,7 +42,8 @@ internal class ComposeGlassBar(
     failure: (Throwable) -> Unit,
 ) : AutoCloseable {
     private val density = context.resources.displayMetrics.density
-    val halo = ceil(64f * density).toInt()
+    var halo = 0
+        private set
     val motion = GlassBarMotion(density)
     private val surface = GlassRenderSurface(source, failure)
     private val owner = ModuleCompositionOwner()
@@ -57,6 +58,7 @@ internal class ComposeGlassBar(
     private var night = false
     private var configured = false
     private var animationsEnabled = true
+    private var durationScale = 1f
     private var active = false
     private var renderingActive = false
     private var visible = false
@@ -79,17 +81,21 @@ internal class ComposeGlassBar(
         scope.launch { recomposer.runRecomposeAndApplyChanges() }
     }
 
-    fun configure(width: Int, height: Int, effects: GlassEffectsSpec, night: Boolean) {
+    fun configure(width: Int, height: Int, effects: GlassEffectsSpec, night: Boolean, maxSelectionWidth: Float) {
         val animate = ValueAnimator.areAnimatorsEnabled()
-        if (closed || configured && this.width == width && this.height == height && this.effects == effects && this.night == night && animationsEnabled == animate) return
+        val nextScale = ValueAnimator.getDurationScale()
+        val margin = GlassRenderOutset.pixels(width, height, density, effects, maxSelectionWidth)
+        if (closed || configured && this.width == width && this.height == height && this.effects == effects && this.night == night && animationsEnabled == animate && durationScale == nextScale && halo == margin) return
         this.width = width
         this.height = height
         this.effects = effects
         this.night = night
         animationsEnabled = animate
+        durationScale = nextScale
+        halo = margin
         configured = true
-        surface.configure(width, height, density, effects, night)
-        motion.configure(width, height, effects.press, animate)
+        surface.configure(width, height, density, effects, night, margin)
+        motion.configure(width, height, effects.press, animate, effects.dragStrength, effects.capsuleScale, effects.clickSpeed)
         updateActive()
     }
 
@@ -112,7 +118,7 @@ internal class ComposeGlassBar(
         updateActive()
         // A loading/transitioning host page can hide the sampled source while keeping the bar
         // interactive. Freeze the backdrop then; don't disable native controls or their motion.
-        if (!active || !visible || !source.isShown || !background.isHardwareAccelerated) return
+        if (!active || !visible || !background.isHardwareAccelerated) return
         background.getLocationOnScreen(location)
         val nextReady = surface.prepare(location[0] + halo, location[1] + halo, nativeTabs)
         if (ready != nextReady) { ready = nextReady; revision++ }
@@ -150,7 +156,8 @@ internal class ComposeGlassBar(
                         reportedFrame = true
                         FeatureHooks.i("Glass Compose motion: first frame")
                     }
-                    val dt = if (previous == 0L) 1f / 60f else ((time - previous) / 1_000_000_000f).coerceIn(0f, 0.064f)
+                    val dt = if (previous == 0L || durationScale <= 0f) 0f
+                        else ((time - previous) / 1_000_000_000f / durationScale).coerceIn(0f, 0.064f)
                     previous = time
                     motion.advance(dt)
                 }

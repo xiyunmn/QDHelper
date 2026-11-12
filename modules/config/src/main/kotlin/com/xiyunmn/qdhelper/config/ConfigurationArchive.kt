@@ -86,6 +86,7 @@ object ConfigurationArchive {
             val key = known[rawKey] ?: error("settings.json 包含未知或不可导入设置：$rawKey")
             result[rawKey] = normalizeImportedValue(key, raw)
         }
+        result.putAll(GlassEffectSettingsMigration.missingValues(result))
         return result
     }
 

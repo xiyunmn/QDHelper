@@ -30,6 +30,7 @@ import kotlin.math.roundToInt
 internal object FlutterBookDetailImages {
     private val buttons = WeakHashMap<Activity, TextView>()
     private val roleTargets = WeakHashMap<Activity, Map<Int, FlutterBookDetailRuntime.Role>>()
+    private val coverTargets = WeakHashMap<Activity, Int>()
     private val diagnostics = WeakHashMap<Activity, MutableSet<String>>()
     private val main = Handler(Looper.getMainLooper())
     private val worker = ManagedExecutor("content-tools.cover-save", "QDHelper-cover-save", 1)
@@ -42,13 +43,16 @@ internal object FlutterBookDetailImages {
                 (SettingsRuntime.isBookDetailCoverOriginalEnabled(it) || SettingsRuntime.isBookDetailRoleAvatarOriginalEnabled(it)) },
             updated = { activity, view, nodes ->
                 updateCover(activity, view, nodes, loadCover)
-                val roles = FlutterBookDetailRuntime.current(activity)?.roles.orEmpty()
+                val book = FlutterBookDetailRuntime.current(activity)
+                val cover = book?.let { coverTarget(view, nodes, it.title) }
+                if (cover == null) coverTargets.remove(activity) else coverTargets[activity] = cover.id
+                val roles = book?.roles.orEmpty()
                 val targets = buildRoleTargets(nodes, roles)
                 roleTargets[activity] = targets
                 val matches = targets.size
                 val shape = if (nodes.size <= 16) nodes.filter { it.image || it.clickable }.take(8)
                     .joinToString { "${it.id}:${it.bounds.toShortString()}:${it.actions}" } else "detail"
-                val summary = "roles=${roles.size}, matchedNodes=$matches, images=${nodes.count { it.image }}, coverSave=${buttons.containsKey(activity)}, shape=$shape"
+                val summary = "roles=${roles.size}, matchedNodes=$matches, images=${nodes.count { it.image }}, coverMatched=${cover != null}, coverSave=${buttons.containsKey(activity)}, shape=$shape"
                 val seen = diagnostics.getOrPut(activity) { mutableSetOf() }
                 if (seen.size < 6 && seen.add(summary)) FeatureHooks.i("Flutter detail images: $summary")
             },
@@ -59,6 +63,17 @@ internal object FlutterBookDetailImages {
                         FeatureHooks.i("Flutter role original image long press matched")
                         OriginalImageDialog.show(activity, role.name, "role_avatar_${role.id}") {
                             RemoteImageDownloader.download(role.imageUrl)
+                        }
+                    }
+                } else null
+            },
+            tap = { activity, _, node ->
+                val book = FlutterBookDetailRuntime.current(activity)
+                if (SettingsRuntime.isBookDetailCoverOriginalEnabled(activity) && book != null &&
+                    coverTargets[activity] == node.id) {
+                    {
+                        OriginalImageDialog.show(activity, book.title, "book_cover_${book.id}") {
+                            loadCover(activity, book.id)
                         }
                     }
                 } else null
@@ -80,8 +95,31 @@ internal object FlutterBookDetailImages {
                 buttons.keys.toList().forEach(::detach)
                 diagnostics.clear()
                 roleTargets.clear()
+                coverTargets.clear()
             }
         }
+    }
+
+    private fun coverTarget(
+        view: View,
+        nodes: List<FlutterSemanticsSupport.Node>,
+        title: String,
+    ): FlutterSemanticsSupport.Node? {
+        if (title.isBlank() || FlutterBookDetailRuntime.coverPreviewClose(view, nodes) != null) return null
+        val headings = nodes.filter { node -> node.bounds.centerY() in 0..view.height / 2 &&
+            node.label.lineSequence().any { it.trim() == title } }
+        if (headings.isEmpty()) return null
+        // Main cover is the unique portrait image to the left of this book's title.
+        // A collapsed toolbar can expose the same title, and one image can have multiple
+        // semantics nodes. Resolve the header/image relationship before requiring uniqueness.
+        return nodes.filter { node ->
+            val area = node.bounds
+            node.image && area.left >= 0 &&
+                area.width() > view.width / 8 && area.width() < view.width / 2 &&
+                area.height() > area.width() && area.height() < view.height / 3 &&
+                headings.any { heading -> area.right <= heading.bounds.left &&
+                    area.top <= heading.bounds.bottom && area.bottom >= heading.bounds.top }
+        }.distinctBy { it.bounds }.singleOrNull()
     }
 
     private fun buildRoleTargets(
@@ -184,6 +222,7 @@ internal object FlutterBookDetailImages {
     fun destroyed(activity: Activity) {
         detach(activity)
         roleTargets.remove(activity)
+        coverTargets.remove(activity)
         diagnostics.remove(activity)
     }
 }

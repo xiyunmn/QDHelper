@@ -1,15 +1,21 @@
 package com.xiyunmn.qdhelper.shared.ui.glass
 
-/** The six independent effects exposed by ForbidAd4TieBa's liquid-glass material. */
 data class GlassEffectsSpec(
-    val blur: Boolean = true,
-    val refraction: Boolean = true,
-    val highlight: Boolean = true,
-    val shadow: Boolean = true,
+    val blurRadiusDp: Float = 7f,
+    val refractionScale: Float = 1f,
+    val surfaceOpacity: Float = 0.5f,
+    val highlightOpacity: Float = 0.75f,
+    val shadowScale: Float = 1f,
+    val dragStrength: Float = 1f,
+    val capsuleScale: Float = 1.05f,
+    val clickSpeed: Float = 0.6f,
     val tilt: Boolean = true,
     val press: Boolean = true,
 ) {
+    val blur: Boolean get() = blurRadiusDp > 0f
+    val refraction: Boolean get() = refractionScale > 0f
+    val highlight: Boolean get() = highlightOpacity > 0f
+    val shadow: Boolean get() = shadowScale > 0f
     val tracksLight: Boolean get() = highlight && tilt
-    val blurRadiusDp: Float get() = if (blur) 4f else 0f
-    val refractionDp: Float get() = if (refraction) 24f else 0f
+    val refractionDp: Float get() = 32f * refractionScale
 }

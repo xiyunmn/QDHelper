@@ -24,9 +24,13 @@ object ConfigRuntime {
         if (initializedPackageName == appContext.packageName && userStore != null && runtimeStore != null) return
         synchronized(initializationLock) {
             if (initializedPackageName == appContext.packageName && userStore != null && runtimeStore != null) return
-            userStore = SharedPreferencesSettingsStore(
-                appContext.getSharedPreferences(USER_PREFS, Context.MODE_PRIVATE),
-            )
+            val preferences = appContext.getSharedPreferences(USER_PREFS, Context.MODE_PRIVATE)
+            val user = SharedPreferencesSettingsStore(preferences)
+            val migrated = GlassEffectSettingsMigration.missingValues(preferences.all)
+            if (migrated.isNotEmpty()) {
+                preferences.edit().also { editor -> migrated.forEach { (key, value) -> editor.putString(key, value) } }.apply()
+            }
+            userStore = user
             runtimeStore = SharedPreferencesSettingsStore(
                 appContext.getSharedPreferences(RUNTIME_PREFS, Context.MODE_PRIVATE),
             )

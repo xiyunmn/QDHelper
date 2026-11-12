@@ -30,13 +30,17 @@ object FlutterSemanticsSupport {
         val enabled: (Activity) -> Boolean,
         val updated: ((Activity, View, List<Node>) -> Unit)?,
         val longPress: ((Activity, View, Node) -> (() -> Unit)?)?,
+        val tap: ((Activity, View, Node) -> (() -> Unit)?)?,
     )
+
+    private data class PendingTap(val node: Node, val owner: String, val client: Client)
 
     private class Session(activity: Activity, view: View, val bridge: Any, val renderer: Any, val channel: Any, val messageHandler: Any) {
         val activity = WeakReference(activity)
         val view = WeakReference(view)
         var nodes: List<Node> = emptyList()
         var pending: Runnable? = null
+        var tap: PendingTap? = null
         var swallowed = false
         var forwardingTouch = false
         var downX = 0f
@@ -74,8 +78,9 @@ object FlutterSemanticsSupport {
         enabled: (Activity) -> Boolean,
         updated: ((Activity, View, List<Node>) -> Unit)? = null,
         longPress: ((Activity, View, Node) -> (() -> Unit)?)? = null,
+        tap: ((Activity, View, Node) -> (() -> Unit)?)? = null,
     ) {
-        clients[owner] = Client(enabled, updated, longPress)
+        clients[owner] = Client(enabled, updated, longPress, tap)
     }
 
     fun install(module: HookModule, classLoader: ClassLoader, phase: String) {
@@ -269,6 +274,11 @@ object FlutterSemanticsSupport {
                 session.downTime = event.downTime
                 val candidates = session.nodes.filter { it.bounds.contains(event.x.toInt(), event.y.toInt()) }
                     .sortedBy { it.bounds.width().toLong() * it.bounds.height() }
+                session.tap = candidates.firstNotNullOfOrNull { node ->
+                    clients.entries.filter { it.value.enabled(activity) }.firstNotNullOfOrNull { client ->
+                        client.value.tap?.invoke(activity, view, node)?.let { PendingTap(node, client.key, client.value) }
+                    }
+                }
                 val selected = candidates.firstNotNullOfOrNull { node ->
                     clients.entries.filter { it.value.enabled(activity) }.firstNotNullOfOrNull { client ->
                         client.value.longPress?.invoke(activity, view, node)?.let { Triple(node, client, it) }
@@ -276,6 +286,7 @@ object FlutterSemanticsSupport {
                 } ?: return false
                 val pending = Runnable {
                     session.pending = null
+                    session.tap = null
                     if (!view.isAttachedToWindow || !activity.hasWindowFocus() || !selected.second.value.enabled(activity) ||
                         session.nodes.none { it.id == selected.first.id && it.label == selected.first.label && it.bounds == selected.first.bounds }) return@Runnable
                     val cancellation = MotionEvent.obtain(session.downTime, SystemClock.uptimeMillis(), MotionEvent.ACTION_CANCEL, session.downX, session.downY, 0)
@@ -294,7 +305,28 @@ object FlutterSemanticsSupport {
                 val dy = event.y - session.downY
                 if (dx * dx + dy * dy > slop * slop) cancel(session)
             }
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL, MotionEvent.ACTION_POINTER_DOWN -> cancel(session)
+            MotionEvent.ACTION_UP -> {
+                val tap = session.tap
+                cancel(session)
+                if (tap != null && activity.hasWindowFocus() && view.isAttachedToWindow &&
+                    clients[tap.owner] === tap.client && tap.client.enabled(activity) &&
+                    event.eventTime - session.downTime <= ViewConfiguration.getLongPressTimeout() &&
+                    tap.node.bounds.contains(event.x.toInt(), event.y.toInt()) &&
+                    session.nodes.any { it == tap.node }) {
+                    val perform = tap.client.tap?.invoke(activity, view, tap.node) ?: return false
+                    // Flutter saw DOWN so scrolling can start normally. Cancel its recognizer
+                    // before consuming UP; the host preview must never open behind our window.
+                    val cancellation = MotionEvent.obtain(event).apply { action = MotionEvent.ACTION_CANCEL }
+                    session.forwardingTouch = true
+                    try { view.onTouchEvent(cancellation) } finally {
+                        session.forwardingTouch = false
+                        cancellation.recycle()
+                    }
+                    perform()
+                    return true
+                }
+            }
+            MotionEvent.ACTION_CANCEL, MotionEvent.ACTION_POINTER_DOWN -> cancel(session)
         }
         return false
     }
@@ -302,6 +334,7 @@ object FlutterSemanticsSupport {
     private fun cancel(session: Session?) {
         session?.pending?.let(handler::removeCallbacks)
         session?.pending = null
+        session?.tap = null
         session?.swallowed = false
     }
 

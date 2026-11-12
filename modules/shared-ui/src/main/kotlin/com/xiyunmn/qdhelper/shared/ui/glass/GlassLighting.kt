@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Adapted from miuix-blur 0.9.3 (Shaders.kt / HighlightStyle.kt), with KernelSU's
 // iosIndicatorSpecular parameters. View/AGSL port; guards degenerate SDF normals.
+// The tab rim follows Kyant Backdrop's Apache-2.0 directional highlight model.
 package com.xiyunmn.qdhelper.shared.ui.glass
 
 import android.graphics.BlendMode
@@ -24,6 +25,8 @@ uniform float radius;
 uniform float strokeWidth;
 uniform float innerBlurRadius;
 uniform float highlightAlpha;
+uniform float2 pressPosition;
+uniform float pressProgress;
 uniform float3 lightDir1;
 uniform float3 lightDir2;
 
@@ -56,14 +59,19 @@ half4 main(float2 coord) {
     float3 n = getNormal(coord, sdf, max(radius, innerBlurRadius));
     float primary = dot(n.xy, lightDir1.xy);
     float secondary = dot(n.xy, lightDir2.xy);
+    float rim = 1.0 - smoothstep(0.0, max(innerBlurRadius, strokeWidth), -sdf);
+    float reach = min(halfView.x, halfView.y) * 3.0;
+    float pressLight = (1.0 - smoothstep(reach * 0.25, reach, distance(coord, pressPosition)))
+            * rim * pressProgress * 0.35;
     half light = half((0.12 * stroke * stroke + primary * primary
-            + secondary * secondary * 0.4) * highlightAlpha);
+            + secondary * secondary * 0.4 + pressLight) * highlightAlpha);
     return half4(light, light, light, 1.0) * mask;
 }
 """
     }
 
     private val shader = RuntimeShader(SHADER)
+    private var tabShader: RuntimeShader? = null
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { blendMode = BlendMode.PLUS }
     private var lastWidth = -1
     private var lastHeight = -1
@@ -76,7 +84,9 @@ half4 main(float2 coord) {
         shader.setFloatUniform("lightDir2", 0f, 0.1f / length, -0.5f / length)
     }
 
-    fun draw(canvas: Canvas, width: Int, height: Int, angle: Float, alpha: Float) {
+    fun draw(canvas: Canvas, width: Int, height: Int, angle: Float, alpha: Float,
+        pressX: Float = 0f, pressY: Float = 0f, pressProgress: Float = 0f,
+    ) {
         if (width <= 0 || height <= 0 || alpha <= 0f || !canvas.isHardwareAccelerated) return
         if (lastWidth != width || lastHeight != height) {
             lastWidth = width
@@ -92,9 +102,46 @@ half4 main(float2 coord) {
             shader.setFloatUniform("lightDir1", cos(rad) / length, sin(rad) / length, -0.05f / length)
         }
         shader.setFloatUniform("highlightAlpha", alpha.coerceIn(0f, 1f))
+        shader.setFloatUniform("pressPosition", pressX.coerceIn(0f, width.toFloat()), pressY.coerceIn(0f, height.toFloat()))
+        shader.setFloatUniform("pressProgress", pressProgress.coerceIn(0f, 1f))
         // Paint snapshots the shader at recording time; cache the compiled program, not a
         // RenderEffect whose uniforms would be frozen at creation time.
         paint.shader = shader
         canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paint)
     }
+
+    fun drawTab(canvas: Canvas, width: Int, height: Int, angle: Float, alpha: Float) {
+        if (width <= 0 || height <= 0 || alpha <= 0f || !canvas.isHardwareAccelerated) return
+        val program = tabShader ?: RuntimeShader(TAB_GLASS_RIM_AGSL).also { tabShader = it }
+        program.setFloatUniform("size", width.toFloat(), height.toFloat())
+        program.setFloatUniform("strokeWidth", density * 0.5f)
+        program.setFloatUniform("blurRadius", density * 0.25f)
+        program.setFloatUniform("direction", cos(angle), sin(angle))
+        program.setFloatUniform("alpha", alpha * 0.5f)
+        paint.shader = program
+        canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paint)
+    }
 }
+
+/** Capsule SDF rim, with a directional half-white specular highlight. */
+private const val TAB_GLASS_RIM_AGSL = """
+uniform float2 size;
+uniform float strokeWidth;
+uniform float blurRadius;
+uniform float2 direction;
+uniform float alpha;
+half4 main(float2 point) {
+    float2 halfSize = size * 0.5;
+    float radius = min(halfSize.x, halfSize.y);
+    float2 centered = point - halfSize;
+    float2 q = abs(centered) - halfSize + radius;
+    float2 outside = max(q, float2(0.0));
+    float sd = length(outside) + min(max(q.x, q.y), 0.0) - radius;
+    float rim = (1.0 - smoothstep(strokeWidth, strokeWidth + blurRadius, -sd))
+        * (1.0 - smoothstep(-0.5, 0.5, sd));
+    if (rim <= 0.0) return half4(0.0);
+    float2 normal = sign(centered) * outside / max(length(outside), 0.0001);
+    half light = half(abs(dot(normal, direction)) * rim * alpha);
+    return half4(light, light, light, light);
+}
+"""

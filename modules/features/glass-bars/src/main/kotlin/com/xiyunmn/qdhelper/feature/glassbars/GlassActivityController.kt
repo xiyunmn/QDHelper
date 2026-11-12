@@ -50,7 +50,7 @@ internal class GlassActivityController(
         }
         if (suspended) return
         if (session == null || session?.closed == true) bind()
-        else session?.update(configuration.effects, configuration.dimensionsFor(adapter.kind))
+        else session?.update(configuration.effects, configuration.dimensionsFor(adapter.kind), configuration.haptics)
     }
 
     fun focus(value: Boolean) {
@@ -82,7 +82,7 @@ internal class GlassActivityController(
                 try {
                     val next = GlassBarSession(result.binding, flutter, ::suspend)
                     session = next
-                    next.attach(configuration.effects, focused, configuration.dimensionsFor(adapter.kind))
+                    next.attach(configuration.effects, focused, configuration.dimensionsFor(adapter.kind), configuration.haptics)
                     if (!suspended) FeatureHooks.i("Glass bar bound: kind=${adapter.kind}")
                 } catch (error: Exception) {
                     session?.close()

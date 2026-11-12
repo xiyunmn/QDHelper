@@ -11,15 +11,19 @@ class GlassRenderSurface(private val source: View, failure: (Throwable) -> Unit)
     private var effects = GlassEffectsSpec()
     private var closed = false
 
-    fun configure(width: Int, height: Int, density: Float, effects: GlassEffectsSpec, night: Boolean) {
+    fun configure(
+        width: Int, height: Int, density: Float, effects: GlassEffectsSpec, night: Boolean,
+        margin: Int = GlassRenderOutset.pixels(width, height, density, effects),
+    ) {
         this.effects = effects
-        renderer.configure(width, height, density, effects, night)
+        renderer.configure(width, height, density, effects, night, margin)
     }
 
     fun update(motion: GlassBarMotion) {
         renderer.setPress(motion.progress, motion.selectionCenterX ?: motion.touchX,
             if (motion.selectionVisible) motion.selectionRect.centerY() else motion.touchY, motion.highlight)
-        renderer.setSelection(motion.selectionRect, motion.selectionVisible, motion.scaleX, motion.scaleY)
+        renderer.setSelection(motion.selectionRect, motion.selectionVisible, motion.scaleX, motion.scaleY, motion.lensSkew)
+        renderer.setControlBounds(motion.controlBounds)
     }
 
     fun setTabContent(content: GlassTabContent?) { if (!closed) renderer.setTabContent(content) }

@@ -139,7 +139,7 @@ internal object FlutterDetailGlassBar {
     ) : AutoCloseable {
         private var closed = false
         private var focused = activity.hasWindowFocus()
-        private var coverPreview = false
+        private var nativeCoverPreview = false
         private var nodes = emptyList<FlutterSemanticsSupport.Node>()
         private val sourceHeight = OwnedProperty({ source.layoutParams.height }, { height ->
             source.layoutParams = source.layoutParams.apply { this.height = height }
@@ -171,18 +171,22 @@ internal object FlutterDetailGlassBar {
                 }
             }
             val config = GlassBarsConfiguration.read(activity)
-            glass.attach(config.effects, false, config.dimensionsFor(GlassBarKind.DETAIL))
+            appearance.setAnimationsEnabled(config.effects.press)
+            glass.attach(config.effects, false, config.dimensionsFor(GlassBarKind.DETAIL), config.haptics)
         }
 
         fun update(all: List<FlutterSemanticsSupport.Node>) {
             if (closed) return
             if (!enabled(activity)) { close(); return }
+            val config = GlassBarsConfiguration.read(activity)
+            appearance.setAnimationsEnabled(config.effects.press)
             val controls = resolveControls(source, all)
-            if (FlutterBookDetailRuntime.coverPreviewClose(source, all) != null) coverPreview = true
-            else if (controls.isNotEmpty()) coverPreview = false
-            // Keep the bar hidden through transient empty semantics until detail controls return.
-            nodes = if (coverPreview) emptyList() else controls
-            bar.visibility = if (coverPreview) View.INVISIBLE else View.VISIBLE
+            if (FlutterBookDetailRuntime.coverPreviewClose(source, all) != null) nativeCoverPreview = true
+            else if (controls.isNotEmpty()) nativeCoverPreview = false
+            // Original-image dialogs cover this window naturally and retain its bar. Only
+            // the host's in-texture preview (including feature-off) needs the occlusion fallback.
+            nodes = if (nativeCoverPreview) emptyList() else controls
+            bar.visibility = if (nativeCoverPreview) View.INVISIBLE else View.VISIBLE
             updateViewport()
             if (nodes.isEmpty()) {
                 actions.forEach { it.node = null }
@@ -198,8 +202,7 @@ internal object FlutterDetailGlassBar {
             }
             appearance.applyTheme()
             focus(activity.hasWindowFocus())
-            val config = GlassBarsConfiguration.read(activity)
-            glass.update(config.effects, config.dimensionsFor(GlassBarKind.DETAIL))
+            glass.update(config.effects, config.dimensionsFor(GlassBarKind.DETAIL), config.haptics)
             if (nodes.isNotEmpty()) report(activity, "module controls bound=${nodes.joinToString { it.label }}")
         }
 

@@ -90,23 +90,32 @@ internal class GlassTabHighlight {
     fun drawNeutral(canvas: Canvas, drawNative: (Canvas) -> Unit) = drawTinted(canvas, neutral, neutralIcons, drawNative)
 
     fun drawAccent(canvas: Canvas, progress: Float, drawNative: (Canvas) -> Unit) {
-        val tabs = content?.tabs.orEmpty()
-        if (progress <= 0f || tabs.isEmpty()) {
-            drawTinted(canvas, accent, accentIcons, drawNative)
-            return
-        }
-        // Scale the hidden accent content for every tab, not the live/nearest host tab.
-        val scale = 1f + .2f * progress.coerceIn(0f, 1f)
-        for (tab in tabs) {
+        val scale = 1f + 0.2f * progress.coerceIn(0f, 1f)
+        content?.tabs.orEmpty().forEach { bounds ->
             val save = canvas.save()
-            canvas.clipRect(tab)
-            canvas.scale(scale, scale, tab.centerX(), tab.centerY())
+            canvas.clipRect(bounds)
+            canvas.clipOutPath(protected)
+            canvas.scale(scale, scale, bounds.centerX(), bounds.centerY())
+            canvas.clipOutPath(protected)
             drawTinted(canvas, accent, accentIcons, drawNative)
             canvas.restoreToCount(save)
         }
     }
 
-    private fun drawTinted(canvas: Canvas, paint: Paint, iconLayer: IconLayer?, drawNative: (Canvas) -> Unit) {
+    fun drawBadges(canvas: Canvas, drawNative: (Canvas) -> Unit) {
+        if (protected.isEmpty) return
+        val save = canvas.save()
+        canvas.clipPath(protected)
+        drawNative(canvas)
+        canvas.restoreToCount(save)
+    }
+
+    private fun drawTinted(canvas: Canvas, paint: Paint, iconLayer: IconLayer?, drawNative: (Canvas) -> Unit, iconScale: Float = 1f) {
+        drawDetails(canvas, paint, drawNative)
+        drawIcons(canvas, paint, iconLayer, drawNative, iconScale)
+    }
+
+    private fun drawDetails(canvas: Canvas, paint: Paint, drawNative: (Canvas) -> Unit) {
         // Disjoint clips avoid double-compositing antialiased glyph edges. SRC_IN is applied
         // to transparent native ink, before compositing it over the glass background.
         var save = canvas.save()
@@ -119,19 +128,26 @@ internal class GlassTabHighlight {
         drawNative(canvas)
         canvas.restoreToCount(layer)
         canvas.restoreToCount(save)
+    }
+
+    private fun drawIcons(canvas: Canvas, paint: Paint, iconLayer: IconLayer?, drawNative: (Canvas) -> Unit, iconScale: Float) {
         if (!icons.isEmpty) {
-            save = canvas.save()
-            canvas.clipPath(icons)
             val replacement = previewIcons.takeIf { paint === accent && !previewArea.isEmpty }
-            val original = canvas.save()
-            if (replacement != null) canvas.clipOutPath(previewArea)
-            if (iconLayer != null) iconLayer.draw(canvas) else drawNative(canvas)
-            canvas.restoreToCount(original)
-            if (replacement != null) {
-                canvas.clipPath(previewArea)
-                replacement.draw(canvas)
+            content?.iconAreas.orEmpty().forEach { bounds ->
+                val save = canvas.save()
+                canvas.clipOutPath(protected)
+                canvas.scale(iconScale, iconScale, bounds.centerX(), bounds.centerY())
+                canvas.clipRect(bounds)
+                val original = canvas.save()
+                if (replacement != null) canvas.clipOutPath(previewArea)
+                if (iconLayer != null) iconLayer.draw(canvas) else drawNative(canvas)
+                canvas.restoreToCount(original)
+                if (replacement != null) {
+                    canvas.clipPath(previewArea)
+                    replacement.draw(canvas)
+                }
+                canvas.restoreToCount(save)
             }
-            canvas.restoreToCount(save)
         }
     }
 

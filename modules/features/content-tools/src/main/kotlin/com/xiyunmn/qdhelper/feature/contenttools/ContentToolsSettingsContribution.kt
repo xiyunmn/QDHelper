@@ -41,7 +41,7 @@ object ContentToolsSettingsContribution : SettingsContribution {
             groupId = "page-customization.book-detail-card",
             rows = listOf(
                 SettingsRow.Toggle("content-tools.book-intro-copy", "简介自由复制", "长按书籍详情页简介，打开完整内容浮窗并自由选择复制范围。", SettingIds.KEY_BOOK_DETAIL_INTRO_FREE_COPY_ENABLED, keywords = setOf("书籍简介", "详情页复制", "长按简介")),
-                SettingsRow.Toggle("content-tools.book-cover-original", "封面原图", "点击封面打开大图后，可直接保存到相册。", SettingIds.KEY_BOOK_DETAIL_COVER_ORIGINAL_ENABLED, keywords = setOf("书籍封面", "封面大图", "保存封面")),
+                SettingsRow.Toggle("content-tools.book-cover-original", "封面原图", "点击封面查看原图，支持缩放和保存到相册。", SettingIds.KEY_BOOK_DETAIL_COVER_ORIGINAL_ENABLED, keywords = setOf("书籍封面", "封面大图", "保存封面")),
                 SettingsRow.Toggle("content-tools.role-avatar-original", "角色头像原图", "长按角色卡片或更多角色列表头像查看原图，支持缩放、拖动和保存到相册。", SettingIds.KEY_BOOK_DETAIL_ROLE_AVATAR_ORIGINAL_ENABLED, keywords = setOf("角色卡片", "更多角色", "角色头像", "长按头像", "保存头像")),
                 SettingsRow.Toggle("content-tools.fans-rank", "显示完整粉丝排名", "书友榜排名超过 99 时，仍显示真实粉丝排名。", SettingIds.KEY_BOOK_DETAIL_FANS_RANK_ENABLED, keywords = setOf("书友榜", "粉丝排名", "真实排名")),
             ),

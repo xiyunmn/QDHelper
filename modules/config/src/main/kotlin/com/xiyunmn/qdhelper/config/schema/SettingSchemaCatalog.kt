@@ -77,6 +77,13 @@ object SettingSchemaCatalog {
         SettingIds.KEY_GLASS_MAIN_BOTTOM_GAP, SettingIds.KEY_GLASS_DETAIL_BOTTOM_GAP, SettingIds.KEY_GLASS_DIRECTORY_BOTTOM_GAP ->
             integerRange(-1..GlassBarDimensions.MAX_GAP)
         SettingIds.KEY_GLASS_STRENGTH -> { raw -> raw in setOf("gentle", "standard", "strong") }
+        SettingIds.KEY_GLASS_BLUR_RADIUS -> integerRange(0..14)
+        SettingIds.KEY_GLASS_REFRACTION_PERCENT, SettingIds.KEY_GLASS_SHADOW_PERCENT,
+        SettingIds.KEY_GLASS_DRAG_STRENGTH -> integerRange(0..200)
+        SettingIds.KEY_GLASS_SURFACE_OPACITY -> integerRange(0..100)
+        SettingIds.KEY_GLASS_HIGHLIGHT_PERCENT -> integerRange(0..200)
+        SettingIds.KEY_GLASS_CAPSULE_SIZE -> integerRange(75..125)
+        SettingIds.KEY_GLASS_CLICK_SPEED -> integerRange(25..175)
         SettingIds.KEY_READ_TIME_MULTIPLIER_VALUE -> { raw ->
             raw.trim().toDoubleOrNull()?.let { it.isFinite() && it in 0.1..2.5 } == true
         }

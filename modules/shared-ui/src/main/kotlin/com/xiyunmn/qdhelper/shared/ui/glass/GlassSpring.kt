@@ -36,6 +36,12 @@ internal class GlassSpring(
         running = false
     }
 
+    fun launch(target: Float, velocity: Float) {
+        this.target = target
+        this.velocity = velocity
+        running = true
+    }
+
     fun advance(seconds: Float) {
         if (!running) return
         var remaining = seconds.coerceIn(0f, 0.064f)

@@ -23,7 +23,16 @@ object SettingIds {
     const val KEY_GLASS_TILT = "feature.glass_bars.tilt"
     // Keep the existing preference for the reference material's press effect.
     const val KEY_GLASS_ANIMATION = "feature.glass_bars.animation"
+    const val KEY_GLASS_HAPTICS = "feature.glass_bars.haptics"
     const val KEY_GLASS_STRENGTH = "feature.glass_bars.strength"
+    const val KEY_GLASS_BLUR_RADIUS = "feature.glass_bars.blur_radius_dp"
+    const val KEY_GLASS_REFRACTION_PERCENT = "feature.glass_bars.refraction_percent"
+    const val KEY_GLASS_SURFACE_OPACITY = "feature.glass_bars.surface_opacity_percent"
+    const val KEY_GLASS_HIGHLIGHT_PERCENT = "feature.glass_bars.highlight_percent"
+    const val KEY_GLASS_SHADOW_PERCENT = "feature.glass_bars.shadow_percent"
+    const val KEY_GLASS_DRAG_STRENGTH = "feature.glass_bars.main.drag_strength_percent"
+    const val KEY_GLASS_CAPSULE_SIZE = "feature.glass_bars.main.capsule_size_percent"
+    const val KEY_GLASS_CLICK_SPEED = "feature.glass_bars.main.click_speed_percent"
 
     const val PREFS_NAME = "qdhelper_settings"
 

@@ -2,7 +2,7 @@ package com.xiyunmn.qdhelper.shared.ui.glass
 
 import kotlin.math.abs
 
-/** KernelSU press, signed drag deformation and delayed release, independent of Android's clock. */
+/** Press optics and signed drag deformation settle together after the selected slot arrives. */
 internal class GlassInteractionMotion {
     private val press = GlassSpring(1f, 1000f, 0.001f)
     private val highlight = GlassSpring(0.5f, 300f, 0.001f)
@@ -12,35 +12,66 @@ internal class GlassInteractionMotion {
     private val offset = GlassSpring(1f, 300f, 0.5f)
     private var releasePending = false
     private var enabled = true
+    private var dragFeedback = false
+    private var dragStrength = 1f
 
     val progress: Float get() = press.value.coerceIn(0f, 1f)
     val highlightProgress: Float get() = highlight.value.coerceIn(0f, 1f)
-    val scaleX: Float get() = horizontal.value / (1f - (velocity.value * 0.075f).coerceIn(-0.2f, 0.2f))
-    val scaleY: Float get() = vertical.value * (1f - (velocity.value * 0.025f).coerceIn(-0.2f, 0.2f))
+    val scaleX: Float get() = (horizontal.value /
+        (1f - (velocity.value * 0.075f).coerceIn(-0.2f, 0.2f)))
+        .coerceIn(0.78f, GlassBarMotion.MAX_SCALE_X)
+    val scaleY: Float get() = (vertical.value *
+        (1f - (velocity.value * 0.025f).coerceIn(-0.2f, 0.2f)))
+        .coerceIn(0.78f, GlassBarMotion.MAX_SCALE_Y)
+    val lensSkew: Float get() = 0f
     val dragDistance: Float get() = offset.value
-    val running: Boolean get() = releasePending || press.running || highlight.running || horizontal.running || vertical.running || velocity.running || offset.running
+    val running: Boolean get() = releasePending || press.running || highlight.running ||
+        horizontal.running || vertical.running || velocity.running || offset.running
 
-    fun configure(enabled: Boolean) {
+    fun configure(enabled: Boolean, dragStrength: Float) {
         this.enabled = enabled
-        if (!enabled) reset()
+        this.dragStrength = dragStrength
+        if (!this.enabled) reset()
     }
 
-    fun press(interactive: Boolean = true) {
+    fun press(interactive: Boolean = true, selection: Boolean = true) {
         if (!enabled) return
         releasePending = false
+        dragFeedback = false
         press.animateTo(1f)
         highlight.animateTo(if (interactive) 1f else 0f)
-        horizontal.animateTo(78f / 56f)
-        vertical.animateTo(78f / 56f)
+        horizontal.animateTo(if (selection) 78f / 56f else 1f)
+        vertical.animateTo(if (selection) 78f / 56f else 1f)
     }
 
-    fun drag(distance: Float) { if (enabled) offset.animateTo(distance) }
+    fun drag(distance: Float) {
+        if (!enabled) return
+        dragFeedback = true
+        releasePending = false
+        val raised = 1f + (78f / 56f - 1f) * dragStrength
+        horizontal.animateTo(raised)
+        vertical.animateTo(raised)
+        press.animateTo(dragStrength.coerceAtMost(1f))
+        highlight.animateTo(dragStrength.coerceAtMost(1f))
+        offset.animateTo(distance * dragStrength.coerceAtMost(1f))
+    }
 
     fun release() {
         if (!enabled) return
         releasePending = true
-        // Finger light fades on lift; the raised lens waits for its selected tab to arrive.
         highlight.animateTo(0f)
+        offset.animateTo(0f)
+    }
+
+    fun cancel() {
+        if (!enabled) return
+        releasePending = false
+        dragFeedback = false
+        press.animateTo(0f)
+        highlight.animateTo(0f)
+        horizontal.animateTo(1f)
+        vertical.animateTo(1f)
+        velocity.animateTo(0f)
         offset.animateTo(0f)
     }
 
@@ -48,11 +79,10 @@ internal class GlassInteractionMotion {
         if (!enabled) return
         if (releasePending && arrived) {
             releasePending = false
-            press.animateTo(0f)
-            horizontal.animateTo(1f)
-            vertical.animateTo(1f)
+            lower()
         }
-        velocity.animateTo(if (press.target > 0f && normalizedVelocity.isFinite()) normalizedVelocity else 0f)
+        val speed = if (press.target > 0f && normalizedVelocity.isFinite()) normalizedVelocity else 0f
+        velocity.animateTo(speed * if (dragFeedback) dragStrength else 1f)
         press.advance(seconds)
         highlight.advance(seconds)
         horizontal.advance(seconds)
@@ -61,8 +91,15 @@ internal class GlassInteractionMotion {
         offset.advance(seconds)
     }
 
+    private fun lower() {
+        press.animateTo(0f)
+        horizontal.animateTo(1f)
+        vertical.animateTo(1f)
+    }
+
     fun reset() {
         releasePending = false
+        dragFeedback = false
         press.snapTo(0f)
         highlight.snapTo(0f)
         horizontal.snapTo(1f)
@@ -72,7 +109,6 @@ internal class GlassInteractionMotion {
     }
 
     companion object {
-        /** KernelSU normalizes velocity by the first-to-last tab travel, not the whole panel. */
         fun normalizedVelocity(pixelsPerSecond: Float, travelPixels: Float): Float =
             if (pixelsPerSecond.isFinite() && travelPixels.isFinite() && travelPixels > 0.5f) {
                 (pixelsPerSecond / travelPixels).coerceIn(-20f, 20f)

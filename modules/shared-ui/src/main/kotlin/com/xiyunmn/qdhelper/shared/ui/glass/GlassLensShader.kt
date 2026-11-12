@@ -4,7 +4,7 @@ package com.xiyunmn.qdhelper.shared.ui.glass
  * SDF lens from ForbidAd4TieBa 90037020861e8d559e07a581c41fde640ebb8e02,
  * based on Kyant0 / KernelSU (Apache-2.0) and WeChat-LiquidGlass (MIT).
  * See resources/licenses. Both materials reuse one bounded, unfiltered page capture;
- * the foreground droplet also refracts a separate display list of native tabs and badges.
+ * Native icon and label ink use their own lens; badges stay above the optical layers.
  */
 internal const val GLASS_LENS_AGSL = """
 uniform shader content;

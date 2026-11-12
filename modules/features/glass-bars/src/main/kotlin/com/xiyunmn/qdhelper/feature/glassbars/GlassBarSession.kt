@@ -3,6 +3,8 @@ package com.xiyunmn.qdhelper.feature.glassbars
 import android.content.res.Configuration
 import android.graphics.Outline
 import android.graphics.Rect
+import android.graphics.RectF
+import android.view.MotionEvent
 import android.graphics.drawable.ColorDrawable
 import android.view.View
 import android.view.ViewGroup
@@ -59,7 +61,10 @@ internal class GlassBarSession(
         FeatureHooks.w("Compose glass unavailable: kind=${binding.kind}, error=${error.javaClass.simpleName}")
         incompatible("${binding.kind.name.lowercase()}.compose-${error.javaClass.simpleName}")
     }
-    private val selection = binding.tabs?.let { GlassTabSelection(bar, it, glass.motion) }
+    private val haptics = GlassHaptics(bar)
+    private val selection = binding.tabs?.let { GlassTabSelection(bar, it, glass.motion, haptics::tick, haptics::confirm) }
+    private var pressedControl: View? = null
+    private var controlFeedback: ControlFeedback? = null
     private val tabHighlight = binding.tabs?.let { GlassTabHighlightContent(bar, it) }
     private val selectionOverlay = glass.foreground
     private val dragTranslation = binding.tabs?.let { ownership.own({ bar.translationX }, { bar.translationX = it }) }
@@ -86,6 +91,7 @@ internal class GlassBarSession(
         if (!closed) {
             refreshTheme(force = false)
             if (!bar.isShown) selection?.cancelTouch()
+            updateControlFeedback()
             mirrorBar()
             glass.setTabContent(tabHighlight?.read())
             glass.prepare()
@@ -97,10 +103,11 @@ internal class GlassBarSession(
         override fun onViewDetachedFromWindow(view: View) = close()
     }
 
-    fun attach(spec: GlassEffectsSpec, active: Boolean, dimensions: GlassBarDimensions = GlassBarDimensions()) {
+    fun attach(spec: GlassEffectsSpec, active: Boolean, dimensions: GlassBarDimensions = GlassBarDimensions(), hapticsEnabled: Boolean = true) {
         // A boot-classpath lease also lets a new module classloader release an old drawing layer.
         releasePreviousLease()
         effects = spec
+        haptics.enabled = hapticsEnabled
         this.dimensions = dimensions.normalized()
         glass.motion.onInteractionOffset = { offset -> dragTranslation?.update { it + offset } }
         glass.background.tag = AbstractMap.SimpleImmutableEntry(LEASE_TAG, this as AutoCloseable)
@@ -126,26 +133,86 @@ internal class GlassBarSession(
         refreshLayout()
     }
 
-    fun update(spec: GlassEffectsSpec, dimensions: GlassBarDimensions = this.dimensions) {
+    fun update(spec: GlassEffectsSpec, dimensions: GlassBarDimensions = this.dimensions, hapticsEnabled: Boolean = haptics.enabled) {
         if (closed) return
         effects = spec
+        haptics.enabled = hapticsEnabled
         this.dimensions = dimensions.normalized()
         refreshTheme(force = true)
         refreshLayout()
     }
 
     fun setActive(active: Boolean) {
-        if (!active) selection?.cancelTouch()
+        if (!active) {
+            selection?.cancelTouch()
+            pressedControl = null
+            controlFeedback?.close()
+            controlFeedback = null
+        }
         glass.setActive(active)
         if (active) refreshTheme(force = true)
     }
 
     fun observeTouch(action: Int, x: Float, y: Float, eventTime: Long) {
         if (closed || !bar.isShown) return
+        if (binding.tabs == null) {
+            if (action == MotionEvent.ACTION_DOWN) {
+                pressedControl = findControl(bar, x, y)
+                glass.motion.setControlBounds(pressedControl?.let(::controlBounds))
+                if (controlFeedback?.view !== pressedControl) {
+                    controlFeedback?.close()
+                    controlFeedback = pressedControl?.let(::ControlFeedback)
+                }
+            }
+        }
         selection?.observeTouch(action, x, y, eventTime)
         selection?.update(glass.motion)
         bar.getLocationOnScreen(barLocation)
         glass.motion.observeTouch(action, x - barLocation[0], y - barLocation[1])
+        if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL || action == MotionEvent.ACTION_POINTER_DOWN) pressedControl = null
+    }
+
+    private fun updateControlFeedback() {
+        val feedback = controlFeedback ?: return
+        val progress = glass.motion.progress
+        if (!feedback.view.isShown || !feedback.view.isEnabled || pressedControl == null && progress <= 0.001f) {
+            feedback.close()
+            controlFeedback = null
+        } else feedback.update(progress)
+    }
+
+    private class ControlFeedback(val view: View) : AutoCloseable {
+        private val scaleX = OwnedProperty({ view.scaleX }, { view.scaleX = it })
+        private val scaleY = OwnedProperty({ view.scaleY }, { view.scaleY = it })
+
+        fun update(progress: Float) {
+            val scale = 1f - 0.04f * progress
+            scaleX.update { it * scale }
+            scaleY.update { it * scale }
+        }
+
+        override fun close() { scaleX.close(); scaleY.close() }
+    }
+
+    private fun controlBounds(view: View): RectF {
+        val position = IntArray(2)
+        view.getLocationOnScreen(position)
+        bar.getLocationOnScreen(barLocation)
+        return RectF((position[0] - barLocation[0]).toFloat(), (position[1] - barLocation[1]).toFloat(),
+            (position[0] - barLocation[0] + view.width).toFloat(), (position[1] - barLocation[1] + view.height).toFloat())
+    }
+
+    private fun findControl(view: View, x: Float, y: Float): View? {
+        if (!view.isShown || !view.isEnabled) return null
+        if (view is ViewGroup) {
+            for (index in view.childCount - 1 downTo 0) findControl(view.getChildAt(index), x, y)?.let { return it }
+        }
+        if (view === bar || !view.isClickable || !view.hasOnClickListeners()) return null
+        val position = IntArray(2)
+        view.getLocationOnScreen(position)
+        val verticalExtra = ((48f * density - view.height) / 2f).coerceAtLeast(0f)
+        return view.takeIf { x >= position[0] && x < position[0] + view.width &&
+            y >= position[1] - verticalExtra && y < position[1] + view.height + verticalExtra }
     }
 
     fun engineAttached(view: View) {
@@ -166,7 +233,7 @@ internal class GlassBarSession(
             val viewportBottom = GlassGeometry.viewportBottom(parentBottom, rootLocation[1] + root.height)
             val clippedBottom = parentBottom - viewportBottom
             val consumed = GlassGeometry.consumedBottom(windowBottom(root), rootLocation[1] + root.height, viewportBottom)
-            val nav = parent.rootWindowInsets?.getInsets(WindowInsets.Type.navigationBars() or WindowInsets.Type.displayCutout())?.bottom ?: 0
+            val nav = parent.rootWindowInsets?.getInsetsIgnoringVisibility(WindowInsets.Type.navigationBars() or WindowInsets.Type.displayCutout())?.bottom ?: 0
             val gap = (GlassGeometry.bottomGapDp(dimensions.bottomGapDp, nav) * density).roundToInt()
             val availableWidth = parent.width - parent.paddingLeft - parent.paddingRight
             val minimumWidth = if (binding.kind == GlassBarKind.MAIN) mainControlWidth() else minimumControlWidth(bar, binding.flexibleControl)
@@ -218,7 +285,7 @@ internal class GlassBarSession(
             // Some host layout passes leave RelativeLayout's cached bottom at the old anchor.
             // Correct only the missing lift, measured without our previous translation.
             val desiredBottom = parentLocation[1] + parent.height - parent.paddingBottom - margin
-            val nav = parent.rootWindowInsets?.getInsets(WindowInsets.Type.navigationBars())?.bottom ?: 0
+            val nav = parent.rootWindowInsets?.getInsetsIgnoringVisibility(WindowInsets.Type.navigationBars() or WindowInsets.Type.displayCutout())?.bottom ?: 0
             val gap = (GlassGeometry.bottomGapDp(dimensions.bottomGapDp, nav) * density).roundToInt()
             val limit = min(visibleBottom - gap, desiredBottom)
             original + min(0f, limit - (parentLocation[1] + bar.bottom).toFloat())
@@ -227,11 +294,16 @@ internal class GlassBarSession(
         glass.background.visibility = visibility
         selectionOverlay?.visibility = visibility
         if (bar.width <= 0 || bar.height <= 0) return
+        val row = binding.tabs?.getChildAt(0) as? ViewGroup
+        glass.motion.setSelectionViewport(parent.paddingLeft - bar.x + 4f * density,
+            parent.width - parent.paddingRight - bar.x - 4f * density)
+        val maxSelectionWidth = if (row == null) 0f else (0 until row.childCount)
+            .map(row::getChildAt).filter { it.visibility == View.VISIBLE }.maxOfOrNull { it.width.toFloat() } ?: 0f
+        glass.configure(bar.width, bar.height, effects, night, maxSelectionWidth)
         mirrorLayer(glass.background)
         selectionOverlay?.let(::mirrorLayer)
         maskHeight?.set(bar.height)
         maskTranslation?.update { it + bar.translationY }
-        glass.configure(bar.width, bar.height, effects, night)
         selection?.update(glass.motion)
     }
 
@@ -304,6 +376,9 @@ internal class GlassBarSession(
     override fun close() {
         if (closed) return
         closed = true
+        pressedControl = null
+        controlFeedback?.close()
+        controlFeedback = null
         selection?.cancelTouch()
         observer?.takeIf { it.isAlive }?.let {
             it.removeOnGlobalLayoutListener(layoutListener)

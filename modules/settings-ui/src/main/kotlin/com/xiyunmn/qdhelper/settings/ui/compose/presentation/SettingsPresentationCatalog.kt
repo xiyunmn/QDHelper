@@ -46,7 +46,7 @@ internal class SettingsPresentationCatalog(contributions: List<SettingsContribut
         page("navigation", "底部导航", "interface", ids = "glass-bars.page navigation.red-dot navigation.account-unread navigation.activity-tab navigation.tab-order")
         val glassRows = listOf("glass-bars.enabled") + listOf("main", "detail", "directory").flatMap { place ->
             listOf("enabled", "height", "width", "bottom-gap").map { "glass-bars.$place.$it" }
-        } + listOf("blur", "refraction", "highlight", "shadow", "tilt", "animation", "base").map { "glass-bars.$it" }
+        } + listOf("main.click-speed", "main.capsule-size", "main.drag-strength", "main.haptics", "blur", "refraction", "surface-opacity", "highlight", "shadow", "tilt", "animation", "base").map { "glass-bars.$it" }
         page("glass", "液态玻璃底栏", "interface", "三处独立尺寸，共用效果", glassRows.joinToString(" "))
         page("page-customization", "页面自定义", "interface", "我的页 · 精选页 · 书籍详情页，调整显示内容")
         page("mine", "我的页自定义", "page-customization", ids = "page-customization.mine page-customization.mine-auto-refresh")
@@ -134,11 +134,11 @@ internal class SettingsPresentationCatalog(contributions: List<SettingsContribut
         fun requires(rowId: String, title: String) = SettingDependency(rowId, "需要先开启「$title」")
         return when {
             id in setOf("diagnostics.discovery", "diagnostics.call-probe", "diagnostics.device-identity", "diagnostics.host-collect-json", "book-shield.trace", "welfare.reward-probe") -> listOf(requires("diagnostics.detailed-log", "详细日志"))
-            id == "glass-bars.tilt" -> listOf(requires("glass-bars.enabled", "悬浮底栏"), requires("glass-bars.highlight", "边缘高光"))
             id.startsWith("glass-bars.") && id !in setOf("glass-bars.enabled", "glass-bars.page", "glass-bars.base") -> buildList {
                 add(requires("glass-bars.enabled", "悬浮底栏"))
                 val place = id.split('.').getOrNull(1)
                 if (place in setOf("main", "detail", "directory") && !id.endsWith(".enabled")) add(requires("glass-bars.$place.enabled", "对应位置底栏"))
+                if (id == "glass-bars.main.drag-strength") add(requires("glass-bars.animation", "按压反馈"))
             }
             id in setOf("network-identity.dns-stack", "network-identity.dns-rules") -> listOf(requires("network-identity.dns-enabled", "自定义 DNS"))
             id == "reader.free-copy-mode" -> listOf(requires("reader.free-copy", "自由复制"))

@@ -24,6 +24,13 @@ upstream from Kyant0/AndroidLiquidGlass) inform the lens, signed drag deformatio
 specular lighting and combined backdrop. QDHelper ports the optical layers to
 native View/RenderNode rendering and retains Qidian's controls and gesture routing.
 
+Kyant0 / AndroidLiquidGlass (Backdrop)
+https://github.com/Kyant0/AndroidLiquidGlass
+License: Apache-2.0; see apache-2.0.txt.
+The Lens, Shaders and Highlight sources inform the bounded SDF refraction,
+seven-sample dispersion and directional edge highlight. QDHelper uses independent
+background and native-content render nodes with its own host integration.
+
 WeChat-LiquidGlass
 https://github.com/liuran001/WeChat-LiquidGlass
 Reference commit: 5d120f15e08665d27f1a552f6138101aa6dee4b2
