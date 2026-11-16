@@ -29,6 +29,7 @@ internal object FlutterCircleFreeCopy {
     private data class Content(val styled: CharSequence, val labels: Set<String>)
     private val contents = linkedMapOf<String, Content>()
     private val whitespace = Regex("\\s+")
+    private val inlineEmoji = Regex("\\[fn=(\\d+)\\]")
     private var installed = false
     private var reportedData = false
 
@@ -157,5 +158,9 @@ internal object FlutterCircleFreeCopy {
         }
     }
 
-    private fun normalize(text: String): String = text.replace("\uFFFC", "").replace(whitespace, "").trim()
+    // Inline emoji are image spans with no spoken label; retain their codes in copied content.
+    private fun normalize(text: String): String = text.replace(inlineEmoji) { match ->
+        if (match.groupValues[1].toIntOrNull() in 1..64) "" else match.value
+    }
+        .replace("\uFFFC", "").replace(whitespace, "").trim()
 }

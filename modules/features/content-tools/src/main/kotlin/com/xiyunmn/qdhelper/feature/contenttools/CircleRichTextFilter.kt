@@ -7,6 +7,7 @@ import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 
 internal object CircleRichTextFilter {
+    private val leadingEmoji = Regex("^\\[fn=\\d+\\]")
     private val textKeys = listOf("Text", "txt", "content", "value")
     private val labelKeys = listOf("NickName", "name", "title", "TopicName", "BookName", "label")
     private val fallbackTextPattern = Regex(
@@ -87,6 +88,7 @@ internal object CircleRichTextFilter {
 
     private fun looksStructured(value: String): Boolean {
         val trimmed = value.trimStart()
+        if (leadingEmoji.containsMatchIn(trimmed)) return false
         return trimmed.startsWith("[") || trimmed.startsWith("{") ||
             (trimmed.startsWith("\"") && trimmed.endsWith("\""))
     }
