@@ -72,7 +72,7 @@ object GlassBarsSettingsContribution : SettingsContribution {
             ))
             if (kind == GlassBarKind.MAIN) {
                 add(SettingsRow.Slider(
-                    "$prefix.click-speed", "点击切换速度", "调整点击 Tab 后胶囊的移动速度；数值越小越慢，拖动手感独立。",
+                    "$prefix.click-speed", "点击切换速度", "调整点击 Tab 后胶囊的移动、落位及回弹速度；数值越小越慢，拖动手感独立。",
                     SettingIds.KEY_GLASS_CLICK_SPEED, 25.0, 175.0, 5.0, 100.0,
                     valueFormatter = { "${it.toInt()}%" },
                 ))

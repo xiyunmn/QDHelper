@@ -13,7 +13,7 @@ object GlassRenderOutset {
         maxSelectionWidth: Float = width.toFloat(),
     ): Int {
         val hasSelection = maxSelectionWidth > 0f
-        val growth = if (effects.press && hasSelection && width > 0) {
+        val growth = if (effects.press && width > 0) {
             8f * density * max(1f, height.toFloat() / width)
         } else 0f
         val scaleX = effects.capsuleScale * if (effects.press) GlassBarMotion.MAX_SCALE_X else 1f
@@ -25,11 +25,15 @@ object GlassRenderOutset {
         ) else 0f
         val rubberOffset = if (effects.press && hasSelection) 4f * density else 0f
         fun blurSupport(radius: Float) = if (radius > 0f) ceil(3f * (0.57735f * radius + 0.5f)) else 0f
-        val shadowKernel = if (effects.shadow) blurSupport(10f * density) else 0f
+        val actionLift = effects.press && !hasSelection
+        val shadowKernel = if (effects.shadow) {
+            blurSupport((if (actionLift) 12f else 10f) * density) + if (actionLift) 2f * density else 0f
+        } else 0f
         val selectionShadow = if (effects.shadow && hasSelection) blurSupport(24f * density) + 4f * density else 0f
         val sampling = (effects.refractionDp + if (hasSelection) 9.8f * effects.refractionScale else 0f) * density +
             blurSupport(effects.blurRadiusDp * density)
         val motionExtent = deformation + if (hasSelection) GlassBarMotion.SELECTION_OVERSHOOT_DP * density else 0f
-        return ceil(max(growth + shadowKernel, motionExtent + max(sampling, selectionShadow)) + rubberOffset).toInt()
+        val surfaceExtent = growth + max(sampling, shadowKernel)
+        return ceil(max(surfaceExtent, motionExtent + max(sampling, selectionShadow)) + rubberOffset).toInt()
     }
 }

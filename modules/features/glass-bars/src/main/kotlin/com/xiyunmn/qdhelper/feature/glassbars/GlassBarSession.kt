@@ -184,14 +184,17 @@ internal class GlassBarSession(
     private class ControlFeedback(val view: View) : AutoCloseable {
         private val scaleX = OwnedProperty({ view.scaleX }, { view.scaleX = it })
         private val scaleY = OwnedProperty({ view.scaleY }, { view.scaleY = it })
+        private val parentClip = (view.parent as? ViewGroup)?.let { parent ->
+            OwnedProperty({ parent.clipChildren }, { parent.clipChildren = it }).apply { set(false) }
+        }
 
         fun update(progress: Float) {
-            val scale = 1f - 0.04f * progress
+            val scale = 1f + 0.02f * progress
             scaleX.update { it * scale }
             scaleY.update { it * scale }
         }
 
-        override fun close() { scaleX.close(); scaleY.close() }
+        override fun close() { scaleX.close(); scaleY.close(); parentClip?.close() }
     }
 
     private fun controlBounds(view: View): RectF {

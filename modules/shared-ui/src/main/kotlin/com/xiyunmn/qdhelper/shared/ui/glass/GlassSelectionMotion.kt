@@ -5,6 +5,7 @@ internal class GlassSelectionMotion {
     private val leading = GlassSpring(1f, 1000f)
     private val trailing = GlassSpring(1f, 1000f)
     private var speed = 1f
+    val animationSpeed: Float get() = speed
     var visible = false
         private set
     val left: Float get() = leading.value

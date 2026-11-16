@@ -246,7 +246,10 @@ class GlassBarMotion(private val density: Float) {
         val velocity = if (dragging) {
             if (sampleAge <= 0.05f) fingerVelocity else 0f
         } else selection.velocity * width * releaseRate
-        interaction.advance(seconds * releaseRate, GlassInteractionMotion.normalizedVelocity(velocity, travelEnd - travelStart),
+        // Keep direct press responsive; after release the entire click settles on one clock.
+        val interactionRate = if (selection.visible && !pressed && !dragging && !settlingDrag)
+            selection.animationSpeed else releaseRate
+        interaction.advance(seconds * interactionRate, GlassInteractionMotion.normalizedVelocity(velocity, travelEnd - travelStart),
             abs(selection.center - selection.targetCenter) <
                 ((travelEnd - travelStart) / width.coerceAtLeast(1) * 0.025f).coerceAtLeast(0.0005f))
         if (!selection.running && !interaction.running) settlingDrag = false

@@ -284,9 +284,9 @@ internal class GlassLensRenderer(private val failure: (Throwable) -> Unit) {
     private fun updateMaterials() {
         if (baseDirty) {
             val actionPress = if (!selectionVisible) pressure else 0f
-            val growth = if (spec.press && selectionVisible && width > 0) 16f * density / width * pressure else 0f
-            val horizontalInset = width * (0.015f * actionPress - growth) / 2f
-            val verticalInset = height * (0.06f * actionPress - growth) / 2f
+            val growth = if (spec.press && width > 0) 16f * density / width * pressure else 0f
+            val horizontalInset = -width * growth / 2f
+            val verticalInset = -height * growth / 2f
             bounds.set(horizontalInset, verticalInset, width - horizontalInset, height - verticalInset)
             path(outline, bounds)
             surface.color = if (night) 0x66292A2D else 0x66F5F5FA
@@ -325,9 +325,9 @@ internal class GlassLensRenderer(private val failure: (Throwable) -> Unit) {
             }
             if (spec.shadow) {
                 shade.color = if (tabContent != null) 0x1A000000 else if (night) 0x33000000 else 0x1A000000
-                shade.alpha = (shade.alpha * spec.shadowScale * (1f - 0.15f * actionPress)).roundToInt().coerceIn(0, 255)
-                val offset = if (tabContent != null) 4f * density else 0f
-                val blur = if (tabContent != null) 24f * density else 10f * density * (1f - 0.35f * actionPress)
+                shade.alpha = (shade.alpha * spec.shadowScale * (1f + 0.15f * actionPress)).roundToInt().coerceIn(0, 255)
+                val offset = if (tabContent != null) 4f * density else 2f * density * actionPress
+                val blur = if (tabContent != null) 24f * density else 10f * density * (1f + 0.2f * actionPress)
                 record(shadow) { it.translate(margin.toFloat(), margin + offset); it.drawPath(outline, shade) }
                 if (shadowEffect == null || shadowRadius != blur) {
                     shadowRadius = blur
