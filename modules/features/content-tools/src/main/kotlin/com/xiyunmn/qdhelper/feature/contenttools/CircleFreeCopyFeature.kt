@@ -41,6 +41,7 @@ object CircleFreeCopyFeature : InstallableFeature {
         phase: String,
     ) {
         if (!QDReaderHost.isMainProcess(processName)) return
+        FlutterCircleFreeCopy.install(module, classLoader, phase)
 
         val listBind = HostTargetResolver.resolveMethod(
             context = HostSessionStore.contextOrNull(),
@@ -289,7 +290,7 @@ object CircleFreeCopyFeature : InstallableFeature {
         val text: Method?,
     )
 
-    private class StyledCopyContent(
+    internal class StyledCopyContent(
         val title: String,
         val body: String,
     ) {

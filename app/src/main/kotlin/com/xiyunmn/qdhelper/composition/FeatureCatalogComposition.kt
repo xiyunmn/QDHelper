@@ -175,6 +175,7 @@ internal object FeatureCatalogComposition {
                     CircleTargetKeys.listBind.id,
                     CircleTargetKeys.detailBindMethods.id,
                     CircleTargetKeys.detailData.id,
+                    BookshelfTargetKeys.nativeNetBridgeRegister.id,
                 ),
             ) { CircleFreeCopyFeature },
             row(
