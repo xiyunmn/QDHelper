@@ -12,6 +12,7 @@ import com.xiyunmn.qdhelper.host.api.target.BookCoverTargetKeys
 import com.xiyunmn.qdhelper.host.api.target.HostTargetResolver
 import com.xiyunmn.qdhelper.host.api.target.TargetKey
 import java.lang.reflect.Method
+import java.lang.reflect.Modifier
 import java.util.concurrent.atomic.AtomicBoolean
 
 object BookCoverGatewayFactory {
@@ -103,9 +104,22 @@ private class HostBookCoverGateway(private val classLoader: ClassLoader) : BookC
             } else {
                 classLoader.findHostClass(QDReaderHost.Classes.COVER_URL_HELPER)?.declaredMethodOrNull(methodName, *parameterTypes)
             }
-            method?.let { FeatureHooks.invoke(it, null, *args) }
+            method?.let { target ->
+                val receiver = if (Modifier.isStatic(target.modifiers)) {
+                    null
+                } else {
+                    companionInstance(target.declaringClass) ?: return@let null
+                }
+                FeatureHooks.invoke(target, receiver, *args)
+            }
                 as? String
         }.getOrNull()?.takeIf { it.isNotBlank() }
+    }
+
+    private fun companionInstance(companionClass: Class<*>): Any? {
+        val enclosing = companionClass.enclosingClass ?: return null
+        val field = enclosing.declaredFields.firstOrNull { Modifier.isStatic(it.modifiers) && it.type == companionClass } ?: return null
+        return runCatching { field.apply { isAccessible = true }.get(null) }.getOrNull()
     }
 
     private fun resolveMethod(key: TargetKey.MethodTarget): Method? {

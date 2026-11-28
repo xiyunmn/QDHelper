@@ -13,7 +13,7 @@ internal object WelfareRecoveryQueries {
             matcher {
                 paramTypes("java.util.concurrent.atomic.AtomicReference", Classes.REWARD_VIDEO_CONFIG,
                     "android.app.Activity", "java.lang.String", "java.lang.String", "org.json.JSONObject",
-                    Classes.UNIVERSAL_VERIFY_HELPER)
+                    null)
                 invokeMethods {
                     add { declaredClass(Classes.REWARD_VIDEO_CONFIG); name("getAdPlatform"); paramCount(0); returnType("int") }
                 }
@@ -22,10 +22,12 @@ internal object WelfareRecoveryQueries {
         verify = { method ->
             java.lang.reflect.Modifier.isStatic(method.modifiers) &&
                 method.declaringClass.name.startsWith("com.qidian.QDReader.extras.") &&
-                method.parameterTypes.map { it.name } == listOf(
+                method.parameterTypes.size == 7 &&
+                method.parameterTypes.take(6).map { it.name } == listOf(
                     "java.util.concurrent.atomic.AtomicReference", Classes.REWARD_VIDEO_CONFIG,
                     "android.app.Activity", "java.lang.String", "java.lang.String", "org.json.JSONObject",
-                    Classes.UNIVERSAL_VERIFY_HELPER) &&
+                ) &&
+                HostMethodContracts.isUniversalVerifyHelper(method.parameterTypes[6]) &&
                 WelfareRecoveryContracts.isObservableSource(method.returnType)
         },
     )

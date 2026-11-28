@@ -50,23 +50,23 @@ internal object BookCoverQueries {
         query = {
             searchPackages("com.qd.ui.component.util")
             matcher {
-                modifiers(Modifier.PUBLIC or Modifier.STATIC)
+                modifiers(Modifier.PUBLIC)
                 paramTypes(Long::class.javaPrimitiveType, Int::class.javaPrimitiveType)
                 returnType(String::class.java)
-                invokeMethods {
-                    add {
-                        paramTypes(Long::class.javaPrimitiveType, Int::class.javaPrimitiveType)
-                        returnType(String::class.java)
-                        addUsingString("qdbimg/349573/%1\$d/%2\$d", StringMatchType.Contains)
-                    }
-                }
+                addUsingString("qdbimg/349573/%1\$d/%2\$d", StringMatchType.Contains)
             }
         },
         verify = { method ->
-            Modifier.isStatic(method.modifiers) &&
+            Modifier.isPublic(method.modifiers) &&
                 method.parameterTypes.contentEquals(arrayOf(Long::class.javaPrimitiveType, Int::class.javaPrimitiveType)) &&
                 method.returnType == String::class.java &&
-                method.declaringClass.name.startsWith("com.qd.ui.component.util.")
+                method.declaringClass.name.startsWith("com.qd.ui.component.util.") &&
+                (Modifier.isStatic(method.modifiers) ||
+                    method.declaringClass.enclosingClass?.let { enclosing ->
+                        ReflectionAccess.fieldsDeclaredBy(enclosing).any {
+                            Modifier.isStatic(it.modifiers) && it.type == method.declaringClass
+                        }
+                    } == true)
         },
     )
 }

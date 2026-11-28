@@ -13,15 +13,10 @@ internal object WelfareRecoveryContracts {
     private const val ATOMIC_INT = "java.util.concurrent.atomic.AtomicInteger"
     private const val CONFIG = HostSymbols.Classes.REWARD_VIDEO_CONFIG
     private const val ACTIVITY = HostSymbols.Classes.BASE_ACTIVITY
-    private const val VERIFY = HostSymbols.Classes.UNIVERSAL_VERIFY_HELPER
 
     val nativeBridgeParameters = listOf(STRING, STRING, STRING, CONFIG, STRING, "int", "int", ACTIVITY, JSON, "int")
     val groupedBridgeParameters = listOf(STRING, STRING, CONFIG, ACTIVITY, JSON, "int")
     val nativeEventParameters = listOf(REF, STRING, "int", REF, CONFIG, "int", "java.lang.Integer")
-    private val groupedErrorTails = listOf(
-        listOf(ATOMIC_INT, "int", ATOMIC_INT, REF, VERIFY, "java.lang.Throwable"),
-        listOf(ATOMIC_INT, "int", ATOMIC_INT, "int", VERIFY, REF, CONFIG, "java.lang.Throwable"),
-    )
 
     fun isPluginBridge(method: Method, parameters: List<String>): Boolean =
         !Modifier.isStatic(method.modifiers) && method.returnType == Void.TYPE &&
@@ -39,11 +34,25 @@ internal object WelfareRecoveryContracts {
             !method.declaringClass.name.startsWith("com.qidian.QDReader.extras.") ||
             method.parameterTypes.firstOrNull()?.let { HostMethodContracts.isWelfareDialog(it) } != true
         ) return false
-        val tail = method.parameterTypes.drop(1).map { it.name }
-        if (method.returnType == Void.TYPE) return tail in groupedErrorTails
+        val tailTypes = method.parameterTypes.drop(1)
+        val tailNames = tailTypes.map { it.name }
+        if (method.returnType == Void.TYPE) {
+            return when (tailTypes.size) {
+                6 -> tailNames.subList(0, 4) == listOf(ATOMIC_INT, "int", ATOMIC_INT, REF) &&
+                    HostMethodContracts.isUniversalVerifyHelper(tailTypes[4]) &&
+                    tailNames[5] == "java.lang.Throwable"
+                8 -> tailNames.subList(0, 4) == listOf(ATOMIC_INT, "int", ATOMIC_INT, "int") &&
+                    HostMethodContracts.isUniversalVerifyHelper(tailTypes[4]) &&
+                    tailNames.subList(5, 8) == listOf(REF, CONFIG, "java.lang.Throwable")
+                else -> false
+            }
+        }
         // ObservableSource is obfuscated too; identify its single subscribe(Observer) contract.
         val source = method.returnType
-        return tail == listOf(ATOMIC_INT, "int", ATOMIC_INT, "int", VERIFY, REF, CONFIG, REF, "java.lang.Throwable") &&
+        return tailTypes.size == 9 &&
+            tailNames.subList(0, 4) == listOf(ATOMIC_INT, "int", ATOMIC_INT, "int") &&
+            HostMethodContracts.isUniversalVerifyHelper(tailTypes[4]) &&
+            tailNames.subList(5, 9) == listOf(REF, CONFIG, REF, "java.lang.Throwable") &&
             isObservableSource(source)
     }
 

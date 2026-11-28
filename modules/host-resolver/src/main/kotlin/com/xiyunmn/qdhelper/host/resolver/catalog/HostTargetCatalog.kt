@@ -150,7 +150,7 @@ object HostTargetCatalog {
     }
 
     private fun revisionOf(id: String): Int = when (id) {
-        DialogTargetKeys.autoUpdateEntry.id.value -> 11
+        in REVISION_11_TARGET_IDS -> 11
         in REVISION_10_TARGET_IDS -> 10
         in REVISION_9_TARGET_IDS -> 9
         in REVISION_8_TARGET_IDS -> 8
@@ -162,6 +162,16 @@ object HostTargetCatalog {
         in REVISION_2_TARGET_IDS -> 2
         else -> 1
     }
+
+    // Rescan targets affected by 7.9.488 obfuscation/R8 changes (UniversalVerifyHelper & cover Companion).
+    private val REVISION_11_TARGET_IDS = setOf(
+        DialogTargetKeys.autoUpdateEntry.id.value,
+        "welfare.extra.finish_watch_business",
+        "welfare.native.reward_source",
+        "welfare.recovery.grouped_event",
+        "welfare.recovery.grouped_error",
+        "content_tools.cover.url_600",
+    )
 
     // Invalidate stale misses after infrastructure renaming and welfare stream changes.
     private val REVISION_10_TARGET_IDS = setOf(

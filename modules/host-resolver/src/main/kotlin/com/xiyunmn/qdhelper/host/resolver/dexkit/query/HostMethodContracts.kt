@@ -292,7 +292,7 @@ internal object HostMethodContracts {
         ownerName: String = HostSymbols.Classes.WELFARE_AD_EXTRA,
         ownerPackagePrefix: String = "com.qidian.QDReader.extras.",
         dialogName: String? = null,
-        verifierName: String = HostSymbols.Classes.UNIVERSAL_VERIFY_HELPER,
+        verifierName: String? = null,
         rewardConfigName: String = "com.qidian.QDReader.repository.entity.config.RewardVideoConfig",
     ): Boolean {
         val params = method.parameterTypes
@@ -306,12 +306,38 @@ internal object HostMethodContracts {
         }
         val atomicInt = "java.util.concurrent.atomic.AtomicInteger"
         val ref = "java.util.concurrent.atomic.AtomicReference"
-        val oldTail = listOf(atomicInt, "int", ref, verifierName)
-        return params.drop(1).map { it.name } in listOf(
-            oldTail + "android.util.Pair",
-            oldTail + listOf(rewardConfigName, "android.util.Pair"),
-            listOf(atomicInt, atomicInt, "int", ref, verifierName, ref, rewardConfigName, "android.util.Pair"),
-        )
+        val names = params.map { it.name }
+        return when (params.size) {
+            6 -> names.subList(1, 4) == listOf(atomicInt, "int", ref) &&
+                isUniversalVerifyHelper(params[4], verifierName) &&
+                names[5] == "android.util.Pair"
+            7 -> names.subList(1, 4) == listOf(atomicInt, "int", ref) &&
+                isUniversalVerifyHelper(params[4], verifierName) &&
+                names.subList(5, 7) == listOf(rewardConfigName, "android.util.Pair")
+            9 -> names.subList(1, 5) == listOf(atomicInt, atomicInt, "int", ref) &&
+                isUniversalVerifyHelper(params[5], verifierName) &&
+                names.subList(6, 9) == listOf(ref, rewardConfigName, "android.util.Pair")
+            else -> false
+        }
+    }
+
+    // UniversalVerifyHelper's obfuscated short name drifts across host builds (e -> g in 7.9.488).
+    fun isUniversalVerifyHelper(type: Class<*>, expectedName: String? = null): Boolean {
+        if (expectedName != null) return type.name == expectedName
+        if (!type.name.startsWith("com.qidian.QDReader.component.universalverify.")) return false
+        return ReflectionAccess.constructor(
+            type,
+            arrayOf(
+                Boolean::class.javaPrimitiveType!!,
+                Int::class.javaPrimitiveType!!,
+                String::class.java,
+                String::class.java,
+                String::class.java,
+                String::class.java,
+                String::class.java,
+                String::class.java,
+            ),
+        ) != null
     }
 
     private fun isNotificationPermissionCallback(type: Class<*>, ownerName: String): Boolean {
